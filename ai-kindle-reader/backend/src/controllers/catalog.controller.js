@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { Readable } from "node:stream";
 
 export const searchBooks = asyncHandler(async (req, res) => {
   const { q, page = 1 } = req.query;
@@ -52,4 +53,35 @@ export const searchBooks = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, payload, "Here are the required books"));
+});
+
+export const downloadBook = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  if (!bookId) {
+    return res.status(400).json(new ApiError(400, "Book ID is not provided"));
+  }
+
+  const response = await fetch(
+    `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
+    {
+      headers: {
+        Accept: "application/epub+zip",
+        "User-Agent": "KindleReader/1.0 (Educational Project)",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `Book ${bookId} not found on Gutenberg`,
+    );
+  }
+  
+  //tell our client's browser what it is receiving
+  res.setHeader("Content-Type", "application/epub+zip");
+  res.setHeader("Content-Disposition", `attachment; filename="${bookId}.epub"`);
+
+
+  Readable.fromWeb(response.body).pipe(res);
 });

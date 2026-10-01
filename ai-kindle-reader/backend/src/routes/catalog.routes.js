@@ -1,8 +1,8 @@
 import { Router } from "express"
-import { searchBooks } from "../controllers/catalog.controller.js"
+import { downloadBook, searchBooks } from "../controllers/catalog.controller.js"
 const router = Router()
 
 router.route('/search').get(searchBooks)
-router.route('/download/:bookId').get
+router.route('/download/:bookId').get(downloadBook)
 
 export default router
