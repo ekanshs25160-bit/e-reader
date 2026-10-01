@@ -1,12 +1,21 @@
 import express from "express";
 import healthRouter from "./src/routes/healthCheck.routes.js";
 import catalogRouter from "./src/routes/catalog.routes.js";
+import cors from "cors";
 
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN?.split(",") || [
+      "http://localhost:3000",
+      "http://localhost:8000",
+    ],
+    credentials: true,
+  }),
+);
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/health", healthRouter);
 app.use("/api/catalog", catalogRouter);
