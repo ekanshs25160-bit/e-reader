@@ -383,7 +383,7 @@ The AI-Powered Mobile E-Reader Backend is a lightweight, edge-ready serverless A
 
 
 * **Edge Route Caching:** `GET /api/catalog/search` responses cached at Edge CDN layers with `s-maxage=86400` (24-hour TTL) to minimize upstream Gutendex traffic.
-* **Stateless Serverless Execution:** Backend runs completely stateless; no operational databases (PostgreSQL/MongoDB) required.
+* **Stateless Serverless Execution:** Backend runs completely stateless; no operational databases (PostgreSQL/MongoDB) required. *(Amended in v1.1 — see Section 8: an optional database is introduced solely for accounts, sync, annotations and AI response caching.)*
 
 
 * **Binary Streaming:** Downloads piped directly to client response bodies without writing temporary files to server disk.
@@ -909,3 +909,269 @@ async function streamAiResponse(selectedText, userQuery, bookContext)
 
 
 * ✅ 100% compliant with standard JavaScript (ES6+) without requiring TypeScript compilation steps.
+
+
+---
+
+---
+
+# Product Requirements Document (PRD)
+
+## AI-Powered Mobile E-Reader — Part 3: Feature Expansion (v1.1 – v2.0)
+
+### 8. Expansion Overview
+
+**Why this section exists:** v1.0 is a single-device, local-only reader. Compared with Kindle, Kobo and Apple Books it lacks sync, a notebook for highlights, a fast dictionary, catalog browsing, reading stats and broader format support. This part specifies those gaps and where the AI layer can go beyond what those apps offer.
+
+**Guiding Principles:**
+
+* **Local-first, optional sync:** Reading, the local library and offline use never require an account. Signing in only adds sync and backup.
+* **AI where it is differentiated:** Use plain APIs for plain lookups (definitions) and reserve the LLM for passages, characters, themes and recaps.
+* **Progress-aware AI:** Every AI feature receives the reader's position so it can enforce spoiler boundaries.
+* **No book text stored server-side:** Servers hold metadata, positions and annotations only.
+
+**Architecture Decision (amends Section 6):** v1.0 specified a fully stateless backend with no database. From v1.1 an optional database (Postgres / Supabase) is introduced solely for accounts, sync, annotations and AI response caching. The stateless principle still applies to catalog proxying and AI streaming.
+
+**Phasing:**
+
+| Phase | Version | Scope |
+| --- | --- | --- |
+| A | v1.1 | Accounts & sync, highlights & notes, dictionary lookup |
+| B | v1.2 | Catalog browse, library organization, reading stats |
+| C | v1.3 | Progress-aware AI (X-Ray, recap, per-book chat), AI caching & quotas |
+| D | v2.0 | OPDS sources, extra formats (PDF/MOBI/AZW3/FB2), send-to-reader, text-to-speech |
+
+---
+
+### 9. Accounts & Cross-Device Sync (Phase A)
+
+#### 9.1 Features
+
+* **Optional Accounts:** ☐ Passwordless sign-in (email magic link and/or Google OAuth). App is fully usable signed-out.
+* **Reading Position Sync:** ☐ CFI and percentage synced per book across devices.
+* **Library Metadata Sync:** ☐ Book list, shelves, finished status and settings (theme, font, size) synced. EPUB binaries are **not** uploaded in v1.1; a new device shows the book as "Not on this device" and prompts a re-download (catalog books) or re-import (personal files).
+* **Book Identity Matching:** ☐ Personal uploads are identified by a content hash (SHA-256 of the file) so the same book matches across devices.
+* **Offline Write Queue:** ☐ Changes made offline are queued in IndexedDB and flushed when connectivity returns.
+* **Conflict Policy:** ☐ Progress uses last-write-wins by `updatedAt` per book. Annotations merge by `id` (union), with soft-delete tombstones so deletions propagate.
+* **Account Data Export & Deletion:** ☐ One-tap JSON export and full account deletion.
+
+#### 9.2 API Endpoints
+
+* `POST /api/auth/magic-link` ☐ — Sends sign-in email. **Body:** `{ "email": "..." }`.
+* `GET /api/auth/session` ☐ — Returns the current user or `401`.
+* `GET /api/sync/progress?since={timestamp}` ☐ — Returns progress records changed after `since`.
+* `PUT /api/sync/progress/:bookKey` ☐ — Upserts `{ cfi, percentage, updatedAt }`. Returns `409` with the server copy if the server record is newer.
+* `GET /api/sync/library` / `PUT /api/sync/library` ☐ — Library metadata and shelves.
+* `DELETE /api/account` ☐ — Deletes the user and all associated rows.
+
+**Auth:** Session cookie (HTTP-only, SameSite) or short-lived JWT. All `/api/sync/*` routes require auth.
+
+---
+
+### 10. Highlights, Notes & Notebook (Phase A)
+
+#### 10.1 Features
+
+* **Persistent Highlights:** ☐ Selecting text offers Highlight (4 colors), Add Note, Copy, Look Up and Ask AI. Highlights are re-rendered on load via `rendition.annotations`.
+* **Notes & Bookmarks:** ☐ Attach free-text notes to a highlight, plus manual page bookmarks.
+* **Save AI Answer to Note:** ☐ One tap to keep an AI drawer response as a note on the selected passage.
+* **Notebook View:** ☐ Per-book list of all highlights, notes and bookmarks, grouped by chapter, filterable by color, searchable, and tap-to-jump (via CFI).
+* **Export:** ☐ Markdown and JSON export per book; Readwise-compatible CSV as a stretch goal.
+
+#### 10.2 API Endpoints
+
+* `GET /api/sync/annotations?bookKey={key}&since={timestamp}` ☐
+* `PUT /api/sync/annotations/:id` ☐ — Upsert one annotation (idempotent by client-generated UUID).
+* `DELETE /api/sync/annotations/:id` ☐ — Soft delete (tombstone).
+
+Annotations are stored locally first (IndexedDB `annotations` store) and synced when signed in.
+
+---
+
+### 11. Dictionary & Lookup (Phase A)
+
+* **Smart Selection Routing:** ☐ Selections of 1–2 words open an instant dictionary card. Longer selections open the AI drawer.
+* **Dictionary Proxy:** ☐ `GET /api/lookup/define?word={w}&lang={code}` proxies a free dictionary source (Free Dictionary API / Wiktionary), returning `{ word, phonetic, partsOfSpeech[], definitions[], examples[] }`.
+* **Caching:** ☐ Responses cached at the edge for 30 days. Previously looked-up words are also cached on the device for offline reuse.
+* **Fallbacks:** ☐ If the dictionary has no entry (archaic words, proper nouns), offer "Explain with AI" as a one-tap fallback.
+* **Vocabulary List:** ☐ Looked-up words are saved to a per-book vocabulary list with the source sentence, exportable as CSV for flashcard apps.
+* **Latency Target:** Dictionary card shown in under 300ms (p95, cached).
+
+---
+
+### 12. Catalog Browse & Sources (Phase B, OPDS in Phase D)
+
+#### 12.1 Features
+
+* **Browse Shelves:** ☐ Home sections for Popular, Trending by genre/topic, and by language, built on Gutendex `sort`, `topic` and `languages` parameters.
+* **Filters:** ☐ Language, topic, and "has EPUB" (already enforced server-side).
+* **Book Detail Page:** ☐ Cover, author, subjects, description, size, and Download / Open buttons.
+* **Metadata Enrichment:** ☐ Optional Open Library lookup for description, series and first-publication year.
+* **Better Editions (Phase D):** ☐ Standard Ebooks as an additional source for higher-quality formatting.
+* **OPDS Support (Phase D):** ☐ User can add OPDS feeds (e.g. Calibre-Web, Standard Ebooks) and browse/download from them.
+
+#### 12.2 API Endpoints
+
+* `GET /api/catalog/browse?sort=popular&topic={t}&languages={l}&page={n}` ☐
+* `GET /api/catalog/book/:id` ☐ — Normalized detail record.
+* `GET /api/catalog/opds?url={feedUrl}` ☐ — Server-side OPDS fetch/normalize (allow-listed schemes, size and timeout limits).
+
+**Upstream Etiquette:** Cache browse responses (`s-maxage` ≥ 24h), send a descriptive `User-Agent`, and keep request volume to Project Gutenberg low; review their automated-access guidelines before launch.
+
+---
+
+### 13. Library Organization & Reading Stats (Phase B)
+
+#### 13.1 Library Organization
+
+* **Collections / Shelves:** ☐ User-created shelves (e.g. "To Read", "Favorites"); a book can belong to several.
+* **Status:** ☐ `unread | reading | finished` with auto-transition at ≥98% progress.
+* **Sort & Filter:** ☐ Sort by recent, title, author, progress; filter by shelf or status.
+* **Series Grouping:** ☐ Group by series when metadata is available.
+
+#### 13.2 Reading Stats
+
+* **Sessions:** ☐ A session starts when the reader opens and ends after 2 minutes of inactivity or exit. Record start, duration and pages turned.
+* **Metrics:** ☐ Time read today/week, pages per session, current streak, optional daily goal, estimated time left in chapter/book (from pace).
+* **Privacy:** ☐ Stats are computed locally and synced as daily aggregates, not raw event logs.
+* **Stats Screen (`/stats`):** ☐ Simple weekly bar chart, streak counter, books finished.
+
+---
+
+### 14. Progress-Aware AI (Phase C)
+
+#### 14.1 Features
+
+* **Progress Context on Every AI Call:** ☐ Requests include `progress: { chapterIndex, chapterTitle, percentage }`. The system instruction treats everything after that point as off-limits (extends `antiSpoilerStrictness`).
+* **Spoiler-Safe X-Ray:** ☐ Lists characters, places and terms **seen so far** with short descriptions, built incrementally per chapter and cached.
+* **Re-Entry Recap:** ☐ "Previously…" summary shown when reopening a book after 7+ days away, limited to events before the saved position.
+* **Per-Book Chat:** ☐ Conversational Q&A about the book, same spoiler boundary, with a visible "Spoilers: off" indicator.
+* **Chapter Summaries (extends v1.0):** ☐ Cached per `(bookKey, chapterIndex)`.
+* **Save to Notebook:** ☐ Any AI answer can be saved as a note (see Section 10).
+
+#### 14.2 API Endpoints
+
+* `POST /api/ai/xray` ☐ — **Body:** `{ bookTitle, author, progress, chapterTextSoFar? }`. **Response:** JSON `{ characters[], places[], terms[] }` (non-streaming, cached).
+* `POST /api/ai/recap` ☐ — **Body:** `{ bookTitle, author, progress, lastReadAt }`. **Response:** SSE stream.
+* `POST /api/ai/chat` ☐ — **Body:** `{ bookTitle, author, progress, history[], message }`. **Response:** SSE stream. History capped (last 10 turns).
+
+#### 14.3 Cost, Caching & Abuse Controls
+
+* **Response Cache:** ☐ Key = hash(`mode`, `bookKey`, `progress bucket`, normalized `selectedText`, `userQuery`). Identical requests return cached output instead of calling the model.
+* **Quotas:** ☐ Per-user daily AI request budget (higher for signed-in users) and per-IP token bucket; return `429` with `Retry-After`.
+* **Input Limits:** ☐ Enforce existing payload caps (2MB body, 10,000-char selection) plus a per-request token ceiling.
+* **Model Config:** ☐ Model name and spoiler strictness live in server config, not hard-coded in route files.
+* **Disclosure:** ☐ First AI use shows a notice that selected text is sent to a third-party model.
+
+---
+
+### 15. Formats, Ingestion & Accessibility (Phase D)
+
+* **Additional Formats:** ☐ PDF, MOBI/AZW3 (DRM-free), FB2 and CBZ. Evaluate client-side parsing (e.g. `foliate-js`) versus a server-side conversion step (Calibre `ebook-convert`) — see Open Questions.
+* **PDF Caveat:** ☐ PDFs do not reflow; font scaling and themes apply only in a "fit width" mode. AI selection still works on the text layer.
+* **Send-to-Reader:** ☐ Unique inbox address that accepts `.epub` attachments, and "Save article as ebook" from a pasted URL.
+* **Text-to-Speech:** ☐ Start with the browser Web Speech API (offline-capable on many devices); evaluate server TTS later.
+* **Accessibility:** ☐ Screen reader labels on all controls, dyslexia-friendly font option, adjustable line/letter spacing, and a reduced-motion setting for page turns.
+
+---
+
+### 16. New Data Models
+
+**ProgressRecord:**
+
+```json
+{
+  "bookKey": "gutenberg:1342",
+  "cfi": "epubcfi(/6/14!/4/2/1:0)",
+  "percentage": 42.5,
+  "updatedAt": 1790000000000,
+  "deviceId": "string"
+}
+```
+
+**Annotation:**
+
+```json
+{
+  "id": "uuid-v4",
+  "bookKey": "gutenberg:1342",
+  "type": "highlight | note | bookmark",
+  "cfiRange": "epubcfi(/6/14!/4/2,/1:0,/1:50)",
+  "color": "yellow | green | blue | pink",
+  "text": "selected excerpt",
+  "note": "optional user note or saved AI answer",
+  "chapterTitle": "Chapter 5",
+  "createdAt": 1790000000000,
+  "updatedAt": 1790000000000,
+  "deleted": false
+}
+```
+
+**ReadingSession:**
+
+```json
+{
+  "bookKey": "gutenberg:1342",
+  "date": "2026-10-01",
+  "durationSeconds": 1260,
+  "pagesTurned": 31
+}
+```
+
+**Book Key Convention:** `gutenberg:{id}` for catalog books, `file:{sha256}` for personal uploads.
+
+**Server Tables (Phase A–C):** `users`, `progress`, `annotations`, `library_items`, `shelves`, `reading_daily`, `ai_cache`. Row-level security so a user can only read and write their own rows.
+
+**New Client Stores (IndexedDB):** `annotations`, `vocabulary`, `sessions`, `shelves`, `syncQueue`.
+
+**BookEntity Additions:** `bookKey`, `status`, `shelfIds[]`, `series`, `contentHash`, `source` (`gutenberg | upload | opds`).
+
+---
+
+### 17. New Routes (Frontend)
+
+| Route | View Description | Data Source | Offline Capable |
+| --- | --- | --- | --- |
+| `/browse` | Catalog shelves, filters, book detail | `/api/catalog/browse` | No |
+| `/notebook/:bookKey` | Highlights, notes, bookmarks, export | IndexedDB (+ sync) | Yes |
+| `/stats` | Reading time, streaks, goals | IndexedDB (+ sync) | Yes |
+| `/vocabulary` | Saved words across books | IndexedDB | Yes |
+| `/settings/account` | Sign-in, sync status, export/delete | `/api/auth/*` | Partial |
+
+---
+
+### 18. Security, Privacy & Operations Additions
+
+* **Auth Hardening:** HTTP-only cookies, CSRF protection on state-changing routes, rate-limited sign-in endpoint.
+* **Data Minimization:** No EPUB text stored server-side. `chapterTextSoFar` is processed in memory and never logged.
+* **Logging:** Redact `selectedText` and `message` fields from application logs.
+* **User Control:** Export and delete endpoints (Section 9) with confirmation UI.
+* **Backups & Migrations:** Daily database backup; versioned schema migrations.
+* **Monitoring:** Track AI cache hit rate, per-user AI spend, sync conflict rate, and dictionary latency on the health endpoint.
+* **CORS & Origins:** Allow-list must include the PWA origin and, for the future native shell, the Capacitor origins.
+
+---
+
+### 19. Updated Success Criteria (v1.1+)
+
+* ☐ A reading position saved on device A resumes on device B within 2 seconds of opening the book.
+* ☐ Highlights and notes created offline appear on all devices after reconnect, with no duplicates and correct deletions.
+* ☐ Dictionary card appears in under 300ms (p95) for cached words.
+* ☐ X-Ray and recap outputs contain no characters, events or terms from beyond the saved position (verified against a test set of books).
+* ☐ AI cache hit rate above 30% on repeated passages; no user can exceed the daily AI quota.
+* ☐ All v1.0 offline guarantees remain intact: reading, themes and bookmarks work with no account and no network.
+* ☐ Account deletion removes all server-side user data.
+
+---
+
+### 20. Open Questions
+
+* **Local-first vs. accounts-first:** Ship v1.0 local-only and add sync in v1.1 (recommended), or build accounts from the start?
+* **Database & auth provider:** Supabase (Postgres + auth + row-level security) vs. a custom Postgres + Auth.js setup.
+* **Sync of personal files:** Keep metadata-only in v1.1, or add optional encrypted file backup later?
+* **Format strategy:** Client-side parsing (`foliate-js`) vs. server-side Calibre conversion for MOBI/AZW3/FB2.
+* **Backend runtime:** The repo currently uses a standalone Express backend while Sections 1–7 describe Next.js Route Handlers. Choose one before building the AI routes (long-running host vs. serverless).
+* **AI model & quota policy:** Default model, per-user limits, and whether heavier features (chat, X-Ray) are limited to signed-in users.
+* **Licensing/terms:** Confirm Project Gutenberg's automated-access guidelines and the terms of any dictionary or metadata API before launch.
+
+---
