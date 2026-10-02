@@ -77,7 +77,7 @@ export const downloadBook = asyncHandler(async (req, res) => {
       `Book ${bookId} not found on Gutenberg`,
     );
   }
-  
+
   //tell our client's browser what it is receiving
   res.setHeader("Content-Type", "application/epub+zip");
   res.setHeader("Content-Disposition", `attachment; filename="${bookId}.epub"`);
@@ -85,3 +85,4 @@ export const downloadBook = asyncHandler(async (req, res) => {
 
   Readable.fromWeb(response.body).pipe(res);
 });
+

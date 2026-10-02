@@ -2,6 +2,7 @@ import express from "express";
 import healthRouter from "./src/routes/healthCheck.routes.js";
 import catalogRouter from "./src/routes/catalog.routes.js";
 import cors from "cors";
+import lookupRouter from './src/routes/lookup.routes.js'
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/health", healthRouter);
 app.use("/api/catalog", catalogRouter);
+app.use('/api/lookup',lookupRouter)
 
 // global error middleware (nothing handles the error gracefully type shi)
 app.use((err, req, res, next) => {
