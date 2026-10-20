@@ -1,0 +1,115 @@
+import { GoogleGenAI } from "@google/genai";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export const aiAssist = asyncHandler(async (req, res) => {
+  const { bookTitle, author, currentChapter, selectedText, userQuery } =
+    req.body;
+
+  if (!bookTitle || !selectedText) {
+    throw new ApiError(400, "bookTitle and selectedText are required");
+  }
+
+  try {
+    // Set Server-Sent Events (SSE) Headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // Build the literary system prompt
+    const systemInstruction = `You are an elite literary scholar embedded inside a Kindle-style reader.
+    Book: "${bookTitle}" by ${author || "Unknown"}.
+    Current Chapter: "${currentChapter || "Unknown"}".
+    Do not spoil any future plot points. Be concise, insightful, and use clear markdown formatting.`;
+
+    const userPrompt = userQuery
+      ? `Excerpt: '${selectedText}'\n\n Question: ${userQuery}`
+      : `Please explain this excerpt, including literary devices, subtext, 
+    and historical or vocabulary context: "${selectedText}"`;
+
+    // Request the stream from Gemini
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemInstruction,
+      },
+    });
+
+    // Stream chunks to the client as they arrive
+    for await (const chunk of responseStream) {
+      const textChunk = chunk.text;
+      if (textChunk) {
+        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error) {
+    console.error("Gemini stream error:", error);
+    // Once headers are sent, we cannot res.status(500).json().
+    // We send an SSE error event and close.
+    res.write(
+      `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
+    );
+    res.end();
+  }
+});
+
+export const aiSummary = asyncHandler(async (req, res) => {
+  const { bookTitle, author, chapterTitle, chapterText } = req.body;
+
+  if (!chapterText) {
+    throw new ApiError(400, "chapterText is required");
+  }
+  if (chapterText.length > 50000) {
+    throw new ApiError(
+      413,
+      "chapterText exceeds maximum length of 50,000 characters",
+    );
+  }
+
+  try {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    const systemInstruction = `You are an elite literary scholar embedded inside a Kindle-style reader.
+        Book: "${bookTitle}" by ${author || "Unknown"}.
+        Current Chapter: "${chapterTitle || "Unknown"}".
+        Do not spoil any future plot points. Be concise, insightful, and use clear markdown`;
+
+    const userPrompt = `Summarize the following chapter from "${bookTitle || "the book"}" 
+        titled "${chapterTitle || "Current Chapter"}":\n\n${chapterText}`;
+
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemInstruction,
+      },
+    });
+
+    for await (const chunk of responseStream) {
+      const textChunk = chunk.text;
+      if (textChunk) {
+        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error) {
+    console.error("Gemini stream error:", error);
+    // Once headers are sent, we cannot res.status(500).json().
+    // We send an SSE error event and close.
+    res.write(
+      `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
+    );
+    res.end();
+  }
+});
+
+

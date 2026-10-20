@@ -18,6 +18,17 @@ const formatGutendexBooks = (rawData) => {
   return books;
 };
 
+const formatSingleBook = (book) => {
+  return {
+  id: book.id,
+  title: book.title,
+  authors: book.authors?.map((a) => a.name) || [],
+  coverUrl: book.formats?.["image/jpeg"] || null,
+  downloadUrl: book.formats?.["application/epub+zip"] || null,
+  languages: book.languages || [],
+};
+};
+
 export const searchBooks = asyncHandler(async (req, res) => {
   const { q, page = 1 } = req.query;
 
@@ -144,4 +155,27 @@ export const browseCatalog = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, payload, "Here you go with the books..."));
+});
+
+export const getBookById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const response = await fetch(`https://gutendex.com/books/${id}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Gutendex Error:", response.status, errorText.slice(0, 300));
+    throw new ApiError(
+      response.status,
+      `Upstream catalog error (${response.status})`,
+    );
+  }
+
+  const rawData = await response.json();
+
+  const book = formatSingleBook(rawData);
+
+  const payload = book
+
+  return res.status(200).json(new ApiResponse(200,payload,'Here is your book...'))
 });
