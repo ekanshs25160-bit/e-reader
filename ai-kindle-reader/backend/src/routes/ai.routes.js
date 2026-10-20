@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { aiAssist, aiSummary } from "../controllers/ai.controller.js";
+import { aiAssist, aiSummary, aiAuthorGrounding } from "../controllers/ai.controller.js";
 
 const router = Router()
 
@@ -8,5 +8,6 @@ const router = Router()
 // router.route('/author-grounding').get()
 router.route('/assist').post(aiAssist);
 router.route('/summary').post(aiSummary);
+router.route('/author-grounding').post(aiAuthorGrounding);
 
 export default router

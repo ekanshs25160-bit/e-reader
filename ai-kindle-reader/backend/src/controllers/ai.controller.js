@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const aiAssist = asyncHandler(async (req, res) => {
   const { bookTitle, author, currentChapter, selectedText, userQuery } =
@@ -29,9 +29,11 @@ export const aiAssist = asyncHandler(async (req, res) => {
       : `Please explain this excerpt, including literary devices, subtext, 
     and historical or vocabulary context: "${selectedText}"`;
 
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
     // Request the stream from Gemini
     const responseStream = await ai.models.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
@@ -82,10 +84,12 @@ export const aiSummary = asyncHandler(async (req, res) => {
         Do not spoil any future plot points. Be concise, insightful, and use clear markdown`;
 
     const userPrompt = `Summarize the following chapter from "${bookTitle || "the book"}" 
-        titled "${chapterTitle || "Current Chapter"}":\n\n${chapterText}`;
+    titled "${chapterTitle || "Current Chapter"}":\n\n${chapterText}`;
 
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
     const responseStream = await ai.models.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
@@ -112,4 +116,55 @@ export const aiSummary = asyncHandler(async (req, res) => {
   }
 });
 
+export const aiAuthorGrounding = asyncHandler(async (req, res) => {
+  const { author, bookTitle, userQuery } = req.body;
+  if (!author || !userQuery) {
+    throw new ApiError(400, "author and userQuery are required");
+  }
 
+  try {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const systemInstruction = `You are an expert biographer and literary historian.
+    Author: "${author}".
+    Book Context: "${bookTitle || "General Works"}".
+    Provide accurate, historically grounded insights into the author's life, 
+    political context, and writing circumstances. 
+    Cite real historical facts and dates clearly using markdown formatting.`;
+
+    const userPrompt = bookTitle
+      ? `Context: "${bookTitle}" by ${author}.\n\nQuestion: ${userQuery}`
+      : `Author: ${author}.\n\nQuestion: ${userQuery}`;
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-3.8-flash",
+      contents: userPrompt,
+      config: {
+        systemInstruction,
+        tools: [{ googleSearch: {} }], // 👈 Enables real-time Google Search grounding
+      },
+    });
+
+    for await (const chunk of responseStream) {
+      const textChunk = chunk.text;
+      if (textChunk) {
+        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error) {
+    console.error("Gemini stream error:", error);
+    // Once headers are sent, we cannot res.status(500).json().
+    // We send an SSE error event and close.
+    res.write(
+      `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
+    );
+    res.end();
+  }
+});

@@ -233,7 +233,7 @@ The AI-Powered Mobile E-Reader Backend is a lightweight, edge-ready serverless A
 
 #### 4.2 Backend Processing Functions[cite: 1, 2]
 
-##### Function 1: `buildAiSystemInstruction(bookTitle, author, antiSpoilerStrictness)`
+##### Function 1: `buildAiSystemInstruction(bookTitle, author, antiSpoilerStrictness)` ✅
 
 * **File:** `app/api/ai/helpers.js`
 * **Purpose:** Dynamically constructs the system instruction string guiding the Gemini model.
@@ -266,7 +266,7 @@ The AI-Powered Mobile E-Reader Backend is a lightweight, edge-ready serverless A
 
 * **Returns:** Formatted system instruction string.
 
-##### Function 2: `createGeminiStream(systemInstruction, userContent, enableSearch)`
+##### Function 2: `createGeminiStream(systemInstruction, userContent, enableSearch)` ✅
 
 * **File:** `app/api/ai/helpers.js`
 * **Purpose:** Initializes `@google/genai` client and calls the streaming endpoint.
@@ -299,7 +299,7 @@ The AI-Powered Mobile E-Reader Backend is a lightweight, edge-ready serverless A
 
 
 
-##### Function 3: `formatGutendexResponse(rawJson)`
+##### Function 3: `formatGutendexResponse(rawJson)` ✅
 
 * **File:** `app/api/catalog/helpers.js`
 * **Purpose:** Filters, normalizes, and strips superfluous Gutenberg metadata.
@@ -991,7 +991,7 @@ Annotations are stored locally first (IndexedDB `annotations` store) and synced 
 ### 11. Dictionary & Lookup (Phase A)
 
 * **Smart Selection Routing:** ☐ Selections of 1–2 words open an instant dictionary card. Longer selections open the AI drawer.
-* **Dictionary Proxy:** ☐ `GET /api/lookup/define?word={w}&lang={code}` proxies a free dictionary source (Free Dictionary API / Wiktionary), returning `{ word, phonetic, partsOfSpeech[], definitions[], examples[] }`.
+* **Dictionary Proxy:** ✅ `GET /api/lookup/define?word={w}&lang={code}` proxies a free dictionary source (Free Dictionary API / Wiktionary), returning `{ word, phonetic, partsOfSpeech[], definitions[], examples[] }`.
 * **Caching:** ☐ Responses cached at the edge for 30 days. Previously looked-up words are also cached on the device for offline reuse.
 * **Fallbacks:** ☐ If the dictionary has no entry (archaic words, proper nouns), offer "Explain with AI" as a one-tap fallback.
 * **Vocabulary List:** ☐ Looked-up words are saved to a per-book vocabulary list with the source sentence, exportable as CSV for flashcard apps.
@@ -1012,8 +1012,8 @@ Annotations are stored locally first (IndexedDB `annotations` store) and synced 
 
 #### 12.2 API Endpoints
 
-* `GET /api/catalog/browse?sort=popular&topic={t}&languages={l}&page={n}` ☐
-* `GET /api/catalog/book/:id` ☐ — Normalized detail record.
+* `GET /api/catalog/browse?sort=popular&topic={t}&languages={l}&page={n}` ✅
+* `GET /api/catalog/book/:id` ✅ — Normalized detail record.
 * `GET /api/catalog/opds?url={feedUrl}` ☐ — Server-side OPDS fetch/normalize (allow-listed schemes, size and timeout limits).
 
 **Upstream Etiquette:** Cache browse responses (`s-maxage` ≥ 24h), send a descriptive `User-Agent`, and keep request volume to Project Gutenberg low; review their automated-access guidelines before launch.
