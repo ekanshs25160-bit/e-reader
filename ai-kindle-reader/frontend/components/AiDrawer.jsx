@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { saveVocabularyWord } from '@/utils/db';
 
 const INSIGHTS = {
   subtext: {
@@ -70,6 +71,8 @@ export default function AiDrawer({
   onClose,
   quote = '“He had become so completely absorbed in himself, and isolated from his fellows, that he dreaded meeting, not only his landlady, but anyone at all.”',
   initialTab = 'subtext',
+  bookTitle = 'Pride and Prejudice',
+  bookId = 'pride-and-prejudice',
   onShowToast,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -77,10 +80,77 @@ export default function AiDrawer({
   const [followUpInput, setFollowUpInput] = useState('');
   const [followUps, setFollowUps] = useState([]);
   const [keptAsNote, setKeptAsNote] = useState(false);
+  const [savedToVocab, setSavedToVocab] = useState(false);
+
+  // Dynamic Dictionary lookup state
+  const [dictLoading, setDictLoading] = useState(false);
+  const [dictResult, setDictResult] = useState(null);
+
+  // Extract clean target word for vocabulary / dictionary lookup
+  const cleanWord = quote
+    ? quote.replace(/^[“"']+|[”"'.?!,;:\s]+$/g, '').trim().split(/\s+/)[0] || 'word'
+    : 'word';
+  const isShortSnippet = quote ? quote.trim().split(/\s+/).length <= 4 : false;
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  // Attempt backend definition lookup when tab is dictionary or when viewing a single word
+  useEffect(() => {
+    if (!open || !cleanWord || cleanWord.length < 2) return;
+
+    let isCancelled = false;
+    async function fetchDefinition() {
+      try {
+        setDictLoading(true);
+        const res = await fetch(`http://localhost:8000/api/lookup/define?word=${encodeURIComponent(cleanWord.toLowerCase())}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && !isCancelled) {
+            setDictResult(json.data);
+          }
+        }
+      } catch (err) {
+        // Fallback gracefully if backend is offline
+      } finally {
+        if (!isCancelled) setDictLoading(false);
+      }
+    }
+
+    if (activeTab === 'define' || isShortSnippet) {
+      fetchDefinition();
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [cleanWord, open, activeTab, isShortSnippet]);
 
   if (!open) return null;
 
   const currentInsight = INSIGHTS[activeTab] || INSIGHTS.subtext;
+
+  const handleSaveToVocabulary = async () => {
+    const wordKey = cleanWord;
+    const def =
+      dictResult?.definition?.[0] ||
+      currentInsight.bullets[0]?.body ||
+      'Contextual passage saved from reading session';
+
+    await saveVocabularyWord({
+      word: wordKey,
+      phonetic: dictResult?.phonetic || '/—/',
+      partOfSpeech: dictResult?.partsOfSpeech?.[0] || 'term',
+      definitions: dictResult?.definition || [def],
+      quote: quote,
+      bookTitle: bookTitle,
+      bookId: bookId,
+    });
+
+    setSavedToVocab(true);
+    if (onShowToast) onShowToast(`Saved "${wordKey}" to your Vocabulary Deck`);
+  };
 
   const handleSendFollowUp = (e) => {
     e?.preventDefault();
@@ -90,7 +160,7 @@ export default function AiDrawer({
       ...prev,
       {
         question: q,
-        answer: `In the context of this passage, "${q}" highlights how the narrator frames unspoken social rules against private conviction—keeping the reader strictly within the perspective of Chapter I.`,
+        answer: `In the context of this passage in ${bookTitle}, "${q}" highlights how the narrator frames unspoken social expectations against private conviction—preserving the reader's view of Chapter I.`,
       },
     ]);
     setFollowUpInput('');
@@ -102,7 +172,7 @@ export default function AiDrawer({
         onClick={onClose}
         className="fixed inset-0 bg-primary/20 backdrop-blur-[2.5px] z-40 pointer-events-auto transition-opacity duration-300"
       />
-      <section className="fixed bottom-0 left-0 right-0 z-50 h-[68%] md:left-auto md:top-0 md:h-full md:w-[440px] md:rounded-t-none md:rounded-l-3xl md:border-t-0 md:border-l bg-surface text-on-surface flex flex-col rounded-t-[24px] border-t border-outline-variant/40 shadow-[0_-8px_32px_rgba(21,42,65,0.16)] transition-transform duration-300 ease-out overflow-hidden">
+      <section className="fixed bottom-0 left-0 right-0 z-50 h-[72%] md:left-auto md:top-0 md:h-full md:w-[450px] md:rounded-t-none md:rounded-l-3xl md:border-t-0 md:border-l bg-surface text-on-surface flex flex-col rounded-t-[24px] border-t border-outline-variant/40 shadow-[0_-8px_32px_rgba(21,42,65,0.16)] transition-transform duration-300 ease-out overflow-hidden">
         <div className="w-full flex justify-center pt-2.5 pb-1 md:hidden">
           <div className="w-10 h-1 rounded-full bg-outline-variant/60"></div>
         </div>
@@ -149,6 +219,7 @@ export default function AiDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3.5 hide-scrollbar">
+          {/* Active quote snippet */}
           <div className="p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/30 border-l-[3.5px] border-l-secondary relative shadow-[0_2px_8px_rgba(44,64,88,0.03)]">
             <div className="flex items-start gap-2">
               <span className="material-symbols-outlined text-[18px] text-secondary shrink-0 mt-0.5">
@@ -160,6 +231,7 @@ export default function AiDrawer({
             </div>
           </div>
 
+          {/* Action Tabs & Vocabulary Auto-Save */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
             <button
               type="button"
@@ -180,6 +252,35 @@ export default function AiDrawer({
               </span>
               <span>Explain Subtext</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('define')}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full font-label-md text-label-md active:scale-95 transition-all ${
+                activeTab === 'define'
+                  ? 'bg-primary-container text-on-primary shadow-xs'
+                  : 'bg-surface-container border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">menu_book</span>
+              <span>Define ({cleanWord})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveToVocabulary}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full font-label-md text-label-md border active:scale-95 transition-all ${
+                savedToVocab
+                  ? 'bg-secondary-container/60 border-secondary text-on-secondary-container font-semibold'
+                  : 'bg-surface-container border-outline-variant/40 text-secondary hover:bg-secondary-container/20'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">
+                {savedToVocab ? 'check_circle' : 'add_circle'}
+              </span>
+              <span>{savedToVocab ? 'Saved to Vocab ✓' : '+ Save to Vocabulary'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('summary')}
@@ -189,9 +290,10 @@ export default function AiDrawer({
                   : 'bg-surface-container border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
-              <span className="material-symbols-outlined text-[15px]">menu_book</span>
-              <span>Chapter Summary</span>
+              <span className="material-symbols-outlined text-[15px]">article</span>
+              <span>Summary</span>
             </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('author')}
@@ -202,49 +304,86 @@ export default function AiDrawer({
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">travel_explore</span>
-              <span>Author &amp; Era</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setKeptAsNote(true);
-                if (onShowToast) onShowToast('Passage & marginalia saved to your Journal');
-              }}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-[15px]">bookmark_add</span>
-              <span>{keptAsNote ? 'Saved to Journal ✓' : 'Save to Journal'}</span>
+              <span>Author Context</span>
             </button>
           </div>
 
-          <div className="bg-surface-container-lowest/80 backdrop-blur-sm rounded-xl p-4 border border-outline-variant/35 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
-              <h3 className="font-headline-sm text-[18px] text-primary tracking-tight font-medium flex items-center gap-1.5">
-                <span>{currentInsight.heading}</span>
-              </h3>
-              <span className="font-caption text-caption text-outline">
-                {currentInsight.marginalia}
-              </span>
-            </div>
-            <div className="space-y-2.5 font-body-ui text-[13.5px] leading-[20px] text-on-surface">
-              {currentInsight.bullets.map((b, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
-                  <p>
-                    <strong className="font-body-ui-bold text-primary">{b.title} </strong>
-                    {b.body}
-                    {b.streaming && (
-                      <span className="inline-block w-[2px] h-3.5 bg-secondary ml-1 cursor-pulse align-middle"></span>
-                    )}
-                  </p>
+          {/* Tab Content */}
+          {activeTab === 'define' ? (
+            <div className="bg-surface-container-lowest/90 backdrop-blur-sm rounded-xl p-4 border border-outline-variant/35 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="font-headline-md text-[20px] text-primary tracking-tight font-semibold">
+                    {dictResult?.word || cleanWord}
+                  </h3>
+                  <span className="font-body-ui text-[12px] text-outline font-mono">
+                    {dictResult?.phonetic || '/—/'}
+                  </span>
                 </div>
-              ))}
+                {dictResult?.partsOfSpeech?.[0] && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-label-sm tracking-wider bg-surface-container-high text-on-surface-variant">
+                    {dictResult.partsOfSpeech[0]}
+                  </span>
+                )}
+              </div>
+
+              {dictLoading ? (
+                <div className="py-4 text-center text-caption text-on-surface-variant animate-pulse">
+                  Looking up dictionary entry...
+                </div>
+              ) : dictResult?.definition ? (
+                <ol className="space-y-2 text-[13.5px] leading-relaxed list-decimal list-inside text-on-surface font-body-ui">
+                  {dictResult.definition.slice(0, 3).map((def, idx) => (
+                    <li key={idx} className="text-on-surface-variant">
+                      <span className="text-on-surface">{def}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="font-body-ui text-[13.5px] text-on-surface-variant leading-relaxed">
+                  Contextual usage in {bookTitle}: &ldquo;{cleanWord}&rdquo; functions to convey the underlying moral posture of the passage.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveToVocabulary}
+                className="w-full mt-2 py-2 px-3 rounded-lg bg-primary text-on-primary font-label-md text-[13px] flex items-center justify-center gap-1.5 shadow-sm hover:bg-primary-container active:scale-98 transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">bookmark_add</span>
+                <span>{savedToVocab ? 'Word Saved to Deck ✓' : '+ Save Word & Quote to Vocabulary'}</span>
+              </button>
             </div>
-            <div className="pt-2 flex items-center gap-1.5 text-on-surface-variant font-caption text-caption border-t border-outline-variant/20">
-              <span className="material-symbols-outlined text-[15px] text-secondary">policy</span>
-              <span>{currentInsight.grounding}</span>
+          ) : (
+            <div className="bg-surface-container-lowest/80 backdrop-blur-sm rounded-xl p-4 border border-outline-variant/35 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                <h3 className="font-headline-sm text-[18px] text-primary tracking-tight font-medium flex items-center gap-1.5">
+                  <span>{currentInsight.heading}</span>
+                </h3>
+                <span className="font-caption text-caption text-outline">
+                  {currentInsight.marginalia}
+                </span>
+              </div>
+              <div className="space-y-2.5 font-body-ui text-[13.5px] leading-[20px] text-on-surface">
+                {currentInsight.bullets.map((b, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
+                    <p>
+                      <strong className="font-body-ui-bold text-primary">{b.title} </strong>
+                      {b.body}
+                      {b.streaming && (
+                        <span className="inline-block w-[2px] h-3.5 bg-secondary ml-1 cursor-pulse align-middle"></span>
+                      )}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 flex items-center gap-1.5 text-on-surface-variant font-caption text-caption border-t border-outline-variant/20">
+                <span className="material-symbols-outlined text-[15px] text-secondary">policy</span>
+                <span>{currentInsight.grounding}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {followUps.map((item, i) => (
             <div
@@ -283,19 +422,16 @@ export default function AiDrawer({
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => {
-                setKeptAsNote((v) => !v);
-                if (onShowToast) onShowToast('Note pinned to current page margin');
-              }}
+              onClick={handleSaveToVocabulary}
               className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md shadow-xs hover:bg-primary transition-colors active:scale-98"
             >
               <span
                 className="material-symbols-outlined text-[16px] text-secondary-fixed"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
-                push_pin
+                bookmark_add
               </span>
-              <span>{keptAsNote ? 'Pinned to Page Margin ✓' : 'Keep as Note on this Page'}</span>
+              <span>{savedToVocab ? 'Saved to Vocabulary ✓' : '+ Save to Vocabulary Deck'}</span>
             </button>
             <button
               type="button"

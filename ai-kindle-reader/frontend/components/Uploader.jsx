@@ -3,10 +3,12 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { saveBook, slugify } from '@/utils/db';
 
 export default function Uploader({ open, onClose, onShowToast }) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef(null);
   const router = useRouter();
 
@@ -17,14 +19,65 @@ export default function Uploader({ open, onClose, onShowToast }) {
     setSelectedFile(file);
   };
 
-  const handleImportConfirm = () => {
+  const handleImportConfirm = async () => {
     if (!selectedFile) return;
-    if (onShowToast) {
-      onShowToast(`Imported "${selectedFile.name}" into your Local Vault`);
+    setIsProcessing(true);
+
+    try {
+      const buffer = await selectedFile.arrayBuffer();
+
+      // Clean title from filename (e.g. "Pride_and_Prejudice.epub" -> "Pride and Prejudice")
+      const rawName = selectedFile.name.replace(/\.(epub|txt|pdf)$/i, '');
+      const cleanTitle = rawName.replace(/[-_]+/g, ' ').trim();
+      const bookId = slugify(cleanTitle);
+
+      const bookMeta = {
+        id: bookId,
+        title: cleanTitle || 'Uploaded Book',
+        author: 'Unknown Author',
+        year: String(new Date().getFullYear()),
+        pages: 350,
+        currentPage: 1,
+        progress: 0,
+        status: 'reading',
+        category: 'Local Vault',
+        language: 'EN',
+        editionNote: 'Uploaded to Local-first Vault',
+        coverUrl: null,
+        themes: ['Personal Library', 'Local Vault'],
+        synopsis: `Locally uploaded e-book: ${selectedFile.name}`,
+        chapterLabel: 'Volume I',
+        chapterHeading: cleanTitle,
+        highlightedWord: {
+          word: 'sanctuary',
+          phonetic: '/ˈsæŋk.tʃʊə.ri/',
+          partOfSpeech: 'noun',
+          definitions: ['A quiet, undisturbed refuge for reading and contemplation.'],
+          quote: 'A quiet, undisturbed refuge for reading and contemplation.',
+        },
+        paragraphs: [
+          'Reading directly from local IndexedDB storage. Turn pages with arrow keys, touch gestures, or the controls below.',
+        ],
+      };
+
+      const saved = await saveBook(bookMeta, buffer);
+
+      if (onShowToast) {
+        onShowToast(`Shelved "${cleanTitle}" in your Local Vault`);
+      }
+
+      setSelectedFile(null);
+      setIsProcessing(false);
+      onClose();
+
+      router.push(`/reader/${saved?.id || bookId}`);
+    } catch (err) {
+      console.error('[Uploader] Import failed:', err);
+      if (onShowToast) {
+        onShowToast('Could not parse EPUB file. Please try another edition.');
+      }
+      setIsProcessing(false);
     }
-    setSelectedFile(null);
-    onClose();
-    router.push('/reader/piranesi');
   };
 
   return (
@@ -116,11 +169,21 @@ export default function Uploader({ open, onClose, onShowToast }) {
           {selectedFile ? (
             <button
               type="button"
+              disabled={isProcessing}
               onClick={handleImportConfirm}
-              className="w-full py-2.5 px-4 rounded-xl bg-primary text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95 active:scale-[0.98] transition-all"
+              className="w-full py-2.5 px-4 rounded-xl bg-primary text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[18px]">check_circle</span>
-              <span>Open in Sanctuary Reader</span>
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving to IndexedDB...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  <span>Open in Sanctuary Reader</span>
+                </>
+              )}
             </button>
           ) : (
             <button

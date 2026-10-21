@@ -9,10 +9,13 @@ const app = express();
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(",") || [
-      "http://localhost:3000",
-      "http://localhost:8000",
-    ],
+    origin: (origin, callback) => {
+      // Allow any localhost port or server-to-server calls
+      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   }),
 );

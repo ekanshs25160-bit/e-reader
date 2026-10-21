@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
+import { saveBook } from '@/utils/db';
 
 const TOPICS = [
   'All Classics',
@@ -99,6 +100,7 @@ const TRENDING_SPINES = [
 const CATALOG_BOOKS = [
   {
     id: 'pride-and-prejudice',
+    gutenbergId: '1342',
     title: 'Pride and Prejudice',
     author: 'Jane Austen',
     rating: '4.8',
@@ -110,6 +112,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'dorian-gray',
+    gutenbergId: '174',
     title: 'The Picture of Dorian Gray',
     author: 'Oscar Wilde',
     rating: '4.7',
@@ -121,6 +124,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'frankenstein',
+    gutenbergId: '84',
     title: 'Frankenstein',
     author: 'Mary Shelley',
     rating: '4.9',
@@ -132,6 +136,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'metamorphosis',
+    gutenbergId: '5200',
     title: 'The Metamorphosis',
     author: 'Franz Kafka',
     rating: '4.6',
@@ -143,6 +148,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'alice-in-wonderland',
+    gutenbergId: '11',
     title: "Alice's Adventures in Wonderland",
     author: 'Lewis Carroll',
     rating: '4.7',
@@ -154,6 +160,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'crime-and-punishment',
+    gutenbergId: '2554',
     title: 'Crime and Punishment',
     author: 'Fyodor Dostoevsky',
     rating: '4.8',
@@ -165,6 +172,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'odyssey',
+    gutenbergId: '1727',
     title: 'The Odyssey',
     author: 'Homer',
     rating: '4.9',
@@ -176,6 +184,7 @@ const CATALOG_BOOKS = [
   },
   {
     id: 'meditations',
+    gutenbergId: '2680',
     title: 'Meditations',
     author: 'Marcus Aurelius',
     rating: '4.9',
@@ -193,11 +202,61 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All Classics');
   const [viewLayout, setViewLayout] = useState('list'); // 'list' | 'grid'
-  const [savedIds, setSavedIds] = useState(() =>
-    new Set(CATALOG_BOOKS.filter((b) => b.initialSaved).map((b) => b.id))
+  const [savedIds, setSavedIds] = useState(
+    () => new Set(CATALOG_BOOKS.filter((b) => b.initialSaved).map((b) => b.id))
   );
 
+  const [downloadingIds, setDownloadingIds] = useState(new Set());
+  const [liveSearchResults, setLiveSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Live Gutenberg Catalog Search via Backend
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setLiveSearchResults(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const res = await fetch(
+          `http://localhost:8000/api/catalog/search?q=${encodeURIComponent(
+            searchQuery.trim()
+          )}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data?.books?.length) {
+            const mapped = json.data.books.map((b) => ({
+              id: String(b.id),
+              gutenbergId: String(b.id),
+              title: b.title,
+              author: b.authors?.[0] || 'Classic Author',
+              rating: '4.8',
+              meta: `Gutenberg #${b.id} · EPUB`,
+              topic: selectedTopic,
+              coverUrl:
+                b.coverUrl ||
+                'https://lh3.googleusercontent.com/aida-public/AB6AXuAeACwBV0M2iT0v1zMj6buRFY5ZzSPUL-cfzJLJgK_Uta9spP87zbWIpy4uMhPqUcMFPn3ASsRwGI1If2w3Ntyumc-QfkvNkymPhRG9wfFtsFpOALQatW0FlQOH-pSeXwELteBRsQigzrkVplrhq3tUpAK6rjpllLI7LC0vxvf4wvByslFEIJxQYhPSNF_SkgPfrvLz1DtiStrlzlq-itqfxw7dSUDI1WOQ7aR8oxw6OEbG1U_xE5qk',
+            }));
+            setLiveSearchResults(mapped);
+          }
+        }
+      } catch (err) {
+        // Keep static fallback
+      } finally {
+        setIsSearching(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedTopic]);
+
   const filteredCatalog = useMemo(() => {
+    if (liveSearchResults && liveSearchResults.length > 0) {
+      return liveSearchResults;
+    }
     return CATALOG_BOOKS.filter((book) => {
       if (selectedTopic !== 'All Classics' && book.topic !== selectedTopic) {
         return false;
@@ -212,16 +271,62 @@ export default function Page() {
       }
       return true;
     });
-  }, [selectedTopic, searchQuery]);
+  }, [selectedTopic, searchQuery, liveSearchResults]);
 
-  const handleSaveBook = (e, book) => {
+  // One-Tap Offline Download Handler
+  const handleDownloadBook = async (e, book) => {
     e.stopPropagation();
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      next.add(book.id);
-      return next;
-    });
-    showToast(`Saved "${book.title}" to Local Vault`);
+    const gutenbergId = String(book.gutenbergId || book.id);
+
+    setDownloadingIds((prev) => new Set(prev).add(book.id));
+    showToast(`Downloading "${book.title}" EPUB binary...`);
+
+    try {
+      // Stream EPUB binary from Express catalog download endpoint
+      const res = await fetch(`http://localhost:8000/api/catalog/download/${gutenbergId}`);
+      let arrayBuffer = null;
+      if (res.ok) {
+        arrayBuffer = await res.arrayBuffer();
+      }
+
+      // Persist book metadata and binary directly into IndexedDB
+      await saveBook(
+        {
+          id: String(book.id),
+          title: book.title,
+          author: book.author || 'Classic Author',
+          coverUrl: book.coverUrl,
+          gutenbergId,
+          status: 'to-read',
+          progress: 0,
+        },
+        arrayBuffer
+      );
+
+      setSavedIds((prev) => new Set(prev).add(book.id));
+      showToast(`Saved "${book.title}" to offline vault!`);
+      router.push(`/book/${book.id}`);
+    } catch (err) {
+      console.warn('Backend download error, saving metadata:', err);
+      await saveBook({
+        id: String(book.id),
+        title: book.title,
+        author: book.author || 'Classic Author',
+        coverUrl: book.coverUrl,
+        gutenbergId,
+        status: 'to-read',
+        progress: 0,
+      });
+      setSavedIds((prev) => new Set(prev).add(book.id));
+      showToast(`Saved "${book.title}" to offline vault`);
+      router.push(`/book/${book.id}`);
+    } finally {
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(book.id);
+        return next;
+      });
+    }
   };
 
   return (
@@ -285,33 +390,38 @@ export default function Page() {
               placeholder="Search title, author, or subject..."
               type="text"
             />
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedTopic('All Classics');
-              }}
-              className="absolute right-3 p-1 rounded-full text-on-surface-variant hover:text-primary transition-colors"
-              title="Filter & Clear"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {searchQuery ? 'close' : 'tune'}
-              </span>
-            </button>
+            {isSearching ? (
+              <span className="absolute right-3.5 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setLiveSearchResults(null);
+                  setSelectedTopic('All Classics');
+                }}
+                className="absolute right-3 p-1 rounded-full text-on-surface-variant hover:text-primary transition-colors"
+                title="Filter & Clear"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {searchQuery ? 'close' : 'tune'}
+                </span>
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-margin px-margin">
-            {TOPICS.map((topic, idx) => {
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-margin px-margin py-1">
+            {TOPICS.map((topic) => {
               const active = selectedTopic === topic;
               return (
                 <button
                   key={topic}
                   type="button"
                   onClick={() => setSelectedTopic(topic)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-label-sm font-label-sm transition-all ${
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-caption font-label-sm transition-all ${
                     active
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'bg-surface-container-lowest/80 border border-outline-variant/40 text-on-surface hover:bg-surface-container-high'
+                      ? 'bg-primary text-on-primary shadow-xs font-semibold'
+                      : 'bg-surface-container-lowest/80 border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-low'
                   }`}
                 >
                   {topic}
@@ -321,52 +431,42 @@ export default function Page() {
           </div>
         </section>
 
-        <section className="pt-2">
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-caption text-caption text-on-surface-variant font-semibold tracking-wider">
-              TRENDING BY TOPIC
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedTopic('All Classics')}
-              className="font-caption text-caption text-secondary hover:underline flex items-center gap-0.5"
-            >
-              <span>Explore all shelves</span>
-              <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-            </button>
+        {/* Curated Bookshelf Spines */}
+        <section className="space-y-3 pt-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-caption text-caption text-on-surface-variant font-semibold tracking-wider">
+                FEATURED SHELF
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-[11px] font-label-sm">
+                Curated
+              </span>
+            </div>
+            <span className="font-caption text-[11px] text-outline font-medium">Swipe to browse</span>
           </div>
-          <div className="bg-surface-container-lowest/60 border border-outline-variant/30 rounded-2xl p-4 pt-5 shadow-sm backdrop-blur-md overflow-hidden relative">
-            <div className="flex items-end justify-between gap-2 sm:gap-3 overflow-x-auto no-scrollbar pt-2 px-1 pb-1">
-              {TRENDING_SPINES.map((sp) => (
-                <Link
-                  key={sp.id}
-                  href={`/book/${sp.id}`}
-                  className={`shrink-0 group cursor-pointer w-10 sm:w-11 ${sp.height} rounded-t-sm rounded-b-[2px] ${sp.bg} border-l border-white/20 border-r border-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg`}
+
+          <div className="relative bg-surface-container-low/70 border border-outline-variant/30 rounded-2xl p-4 pt-5 shadow-xs">
+            <div className="flex items-end justify-around gap-2 px-1">
+              {TRENDING_SPINES.map((book) => (
+                <div
+                  key={book.id}
+                  onClick={() => router.push(`/book/${book.id}`)}
+                  className={`w-12 sm:w-14 ${book.height} ${book.bg} rounded-t-sm shadow-md cursor-pointer hover:-translate-y-2 transition-transform duration-200 flex flex-col items-center justify-between py-2.5 px-1 relative group border-t border-x border-white/10`}
                 >
-                  {sp.topType === 'icon' ? (
-                    <span className={`material-symbols-outlined text-[12px] ${sp.topColor}`}>
-                      {sp.top}
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-[9px] ${sp.topColor} ${
-                        sp.topType === 'text-serif' ? 'font-serif text-[10px]' : 'font-bold tracking-widest uppercase'
-                      }`}
-                    >
-                      {sp.top}
-                    </span>
-                  )}
-                  <div
-                    className={`spine-book text-[11px] font-headline-sm ${sp.titleColor} tracking-tight truncate ${sp.maxH} rotate-180`}
-                  >
-                    {sp.title}
-                  </div>
                   <span
-                    className={`text-[8px] ${sp.authorColor} font-caption tracking-tighter truncate`}
+                    className={`font-label-sm text-[10px] font-bold ${book.topColor} truncate`}
                   >
-                    {sp.author}
+                    {book.top}
                   </span>
-                </Link>
+                  <span
+                    className={`writing-mode-vertical text-[11px] font-headline-sm font-semibold tracking-wide ${book.titleColor} truncate ${book.maxH}`}
+                  >
+                    {book.title}
+                  </span>
+                  <span className={`text-[9px] font-caption ${book.authorColor} truncate`}>
+                    {book.author}
+                  </span>
+                </div>
               ))}
             </div>
             <div className="h-3 w-full bg-gradient-to-b from-[#b89f82] to-[#998166] rounded-sm shadow-inner mt-0.5 border-t border-[#dfcfbd]"></div>
@@ -377,11 +477,12 @@ export default function Page() {
           </div>
         </section>
 
+        {/* Search Results & Download Shelf */}
         <section id="shelves" className="space-y-3.5 pt-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="font-caption text-caption text-on-surface-variant font-semibold tracking-wider">
-                MOST DOWNLOADED
+                {liveSearchResults ? `SEARCH RESULTS (${liveSearchResults.length})` : 'MOST DOWNLOADED'}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-secondary-container/30 text-on-secondary-container text-[11px] font-label-sm">
                 2,400+ this week
@@ -417,34 +518,59 @@ export default function Page() {
 
           {viewLayout === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredCatalog.map((book) => (
-                <div
-                  key={book.id}
-                  onClick={() => router.push(`/book/${book.id}`)}
-                  className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden bg-surface-container shadow border border-outline-variant/30">
-                    <img
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      alt={book.title}
-                      src={book.coverUrl}
-                    />
+              {filteredCatalog.map((book) => {
+                const isSaved = savedIds.has(book.id);
+                const isDownloading = downloadingIds.has(book.id);
+                return (
+                  <div
+                    key={book.id}
+                    onClick={() => router.push(`/book/${book.id}`)}
+                    className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
+                  >
+                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden bg-surface-container shadow border border-outline-variant/30">
+                      <img
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        alt={book.title}
+                        src={book.coverUrl}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider">
+                        {book.author}
+                      </span>
+                      <h3 className="font-headline-sm text-[15px] text-primary leading-tight font-medium truncate mt-0.5">
+                        {book.title}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDownloadBook(e, book)}
+                      disabled={isDownloading}
+                      className="mt-1 w-full py-1.5 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary text-xs font-label-md flex items-center justify-center gap-1 transition-colors"
+                    >
+                      {isDownloading ? (
+                        <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                      ) : isSaved ? (
+                        <>
+                          <span className="material-symbols-outlined text-[14px]">check</span>
+                          <span>In Vault</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[14px]">download</span>
+                          <span>Download</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider">
-                      {book.author}
-                    </span>
-                    <h3 className="font-headline-sm text-[15px] text-primary leading-tight font-medium truncate mt-0.5">
-                      {book.title}
-                    </h3>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
               {filteredCatalog.map((book) => {
                 const isSaved = savedIds.has(book.id);
+                const isDownloading = downloadingIds.has(book.id);
                 return (
                   <div
                     key={book.id}
@@ -496,13 +622,18 @@ export default function Page() {
                     ) : (
                       <button
                         type="button"
-                        onClick={(e) => handleSaveBook(e, book)}
-                        className="shrink-0 w-9 h-9 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary border border-outline-variant/40 flex items-center justify-center transition-all active:scale-95 group"
-                        title="Download EPUB"
+                        onClick={(e) => handleDownloadBook(e, book)}
+                        disabled={isDownloading}
+                        className="shrink-0 w-9 h-9 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary border border-outline-variant/40 flex items-center justify-center transition-all active:scale-95 group disabled:opacity-50"
+                        title="Download EPUB to Vault"
                       >
-                        <span className="material-symbols-outlined text-[18px] group-hover:translate-y-0.5 transition-transform">
-                          arrow_downward
-                        </span>
+                        {isDownloading ? (
+                          <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                        ) : (
+                          <span className="material-symbols-outlined text-[18px] group-hover:translate-y-0.5 transition-transform">
+                            arrow_downward
+                          </span>
+                        )}
                       </button>
                     )}
                   </div>
@@ -513,15 +644,6 @@ export default function Page() {
         </section>
         <div className="h-6"></div>
       </main>
-
-      <button
-        type="button"
-        onClick={openImportModal}
-        className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-50 w-12 h-12 rounded-full bg-primary text-on-primary shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary-container active:scale-95 transition-all duration-150"
-        title="Quick Add EPUB"
-      >
-        <span className="material-symbols-outlined text-[24px]">add</span>
-      </button>
     </div>
   );
 }

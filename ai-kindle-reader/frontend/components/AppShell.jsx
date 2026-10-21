@@ -16,7 +16,7 @@ const NAV = [
 ];
 
 function isActive(pathname, href) {
-  return href === '/' ? pathname === '/' || pathname === '/home-night' : pathname.startsWith(href);
+  return href === '/' ? pathname === '/' : pathname.startsWith(href);
 }
 
 export default function AppShell({ children }) {

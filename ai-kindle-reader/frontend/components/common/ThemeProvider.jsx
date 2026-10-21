@@ -46,7 +46,6 @@ export function ThemeProvider({ children }) {
   }, []);
 
   const isNight =
-    pathname === '/home-night' ||
     themeMode === 'night' ||
     (themeMode === 'auto' && systemDark);
 

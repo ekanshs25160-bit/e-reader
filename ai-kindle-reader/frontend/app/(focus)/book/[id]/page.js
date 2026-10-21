@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getBookById } from '@/utils/booksData';
 import { useTheme } from '@/components/common/ThemeProvider';
+import { saveBook, getBook } from '@/utils/db';
 
 export default function Page() {
   const params = useParams();
@@ -13,6 +14,25 @@ export default function Page() {
 
   const [expandedSynopsis, setExpandedSynopsis] = useState(false);
   const [savedToLibrary, setSavedToLibrary] = useState(book.status !== 'to-read');
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function checkSavedState() {
+      try {
+        const stored = await getBook(book.id);
+        if (stored && active) {
+          setSavedToLibrary(true);
+        }
+      } catch (err) {
+        console.warn('Error reading book saved state:', err);
+      }
+    }
+    checkSavedState();
+    return () => {
+      active = false;
+    };
+  }, [book.id]);
 
   const handleClose = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -22,10 +42,50 @@ export default function Page() {
     }
   };
 
-  const handlePrimaryAction = () => {
+  const handlePrimaryAction = async () => {
     if (!savedToLibrary) {
-      setSavedToLibrary(true);
-      showToast(`Saved "${book.title}" to your offline Library`);
+      setDownloading(true);
+      showToast(`Downloading "${book.title}" EPUB into offline vault...`);
+      try {
+        const res = await fetch(
+          `http://localhost:8000/api/catalog/download/${book.gutenbergId || book.id}`
+        );
+        let arrayBuffer = null;
+        if (res.ok) {
+          arrayBuffer = await res.arrayBuffer();
+        }
+
+        await saveBook(
+          {
+            id: String(book.id),
+            title: book.title,
+            author: book.author,
+            coverUrl: book.coverUrl,
+            gutenbergId: String(book.gutenbergId || book.id),
+            status: 'to-read',
+            progress: 0,
+          },
+          arrayBuffer
+        );
+
+        setSavedToLibrary(true);
+        showToast(`Saved "${book.title}" to your offline Library!`);
+      } catch (err) {
+        console.warn('Backend download error:', err);
+        await saveBook({
+          id: String(book.id),
+          title: book.title,
+          author: book.author,
+          coverUrl: book.coverUrl,
+          gutenbergId: String(book.gutenbergId || book.id),
+          status: 'to-read',
+          progress: 0,
+        });
+        setSavedToLibrary(true);
+        showToast(`Saved "${book.title}" to Library`);
+      } finally {
+        setDownloading(false);
+      }
     } else {
       router.push(`/reader/${book.id}`);
     }
@@ -57,146 +117,48 @@ export default function Page() {
 
           <div className="flex-1 no-scrollbar px-5 md:px-8 pt-4 pb-28 md:pb-6 space-y-5">
             <div className="flex items-start gap-4 pt-1">
-              <div
-                onClick={() => router.push(`/reader/${book.id}`)}
-                className="relative flex-shrink-0 w-28 sm:w-32 aspect-[3/4.2] rounded-lg overflow-hidden book-spine-effect border border-black/10 bg-primary-container cursor-pointer group"
-              >
-                <img
-                  alt={`${book.title} by ${book.author} vintage book cover`}
-                  className="w-full h-full object-cover select-none group-hover:scale-105 transition-transform duration-300"
-                  src={book.coverUrl}
-                />
-                <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/40 via-white/10 to-transparent pointer-events-none"></div>
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20 pointer-events-none"></div>
+              <div className="w-24 h-36 shrink-0 rounded-lg overflow-hidden bg-surface-container-high shadow-md border border-outline-variant/40 relative">
+                <img className="w-full h-full object-cover" src={book.coverUrl} alt={book.title} />
               </div>
-
-              <div className="flex-1 flex flex-col justify-start min-w-0">
-                <div className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full bg-secondary-fixed/50 border border-secondary/20 mb-1.5">
-                  <span className="material-symbols-outlined text-[12px] text-secondary">
-                    public
-                  </span>
-                  <span className="text-label-sm font-label-sm text-secondary font-semibold tracking-tight">
-                    PUBLIC DOMAIN
-                  </span>
-                </div>
-                <h1 className="font-headline-md text-headline-md text-primary tracking-tight leading-tight mb-1">
+              <div className="flex-1 min-w-0 space-y-1">
+                <h1 className="font-headline-md text-headline-md text-primary font-semibold tracking-tight leading-snug">
                   {book.title}
                 </h1>
-                <p className="font-label-md text-label-md text-on-surface-variant tracking-wider font-semibold uppercase mb-2">
-                  {book.author}
-                </p>
-                <div className="flex items-center gap-1.5 text-caption font-caption text-on-surface-variant">
-                  <div className="flex items-center text-secondary">
-                    <span
-                      className="material-symbols-outlined text-[15px]"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      star
-                    </span>
-                    <span className="font-bold ml-0.5 text-on-surface">{book.rating}</span>
-                  </div>
-                  <span>·</span>
+                <p className="font-body-ui text-label-md text-on-surface-variant">{book.author}</p>
+                <div className="flex items-center gap-3 pt-2 text-caption font-caption text-outline">
                   <span>{book.year}</span>
-                  <span>·</span>
-                  <span className="truncate">{book.category}</span>
+                  <span>•</span>
+                  <span>{book.pages} pages</span>
+                  <span>•</span>
+                  <span className="text-secondary font-medium">Free Domain</span>
                 </div>
-                <p className="mt-2 text-caption font-caption text-outline italic">
-                  {book.editionNote}
-                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 divide-x divide-outline-variant/30 bg-surface-container-lowest/80 border border-outline-variant/40 rounded-xl py-2.5 px-1 shadow-sm text-center">
-              <div className="flex flex-col items-center px-2">
-                <span className="font-headline-sm text-headline-sm text-primary font-semibold leading-none mb-1">
-                  {book.language}
-                </span>
-                <span className="text-label-sm font-label-sm text-outline tracking-wider uppercase">
-                  Language
-                </span>
-              </div>
-              <div className="flex flex-col items-center px-2">
-                <span className="font-headline-sm text-headline-sm text-primary font-semibold leading-none mb-1">
-                  {book.size}
-                </span>
-                <span className="text-label-sm font-label-sm text-outline tracking-wider uppercase">
-                  File Size
-                </span>
-              </div>
-              <div className="flex flex-col items-center px-2">
-                <span className="font-headline-sm text-headline-sm text-primary font-semibold leading-none mb-1">
-                  ~{book.pages}
-                </span>
-                <span className="text-label-sm font-label-sm text-outline tracking-wider uppercase">
-                  Pages
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-label-sm font-label-sm text-outline uppercase tracking-wider block">
-                Themes &amp; Context
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {book.themes.map((theme) => (
-                  <span
-                    key={theme}
-                    className="px-2.5 py-1 rounded-lg bg-surface-container border border-outline-variant/40 text-on-surface-variant text-label-md font-label-md"
-                  >
-                    {theme}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-1 border-t border-outline-variant/20">
-              <h2 className="font-headline-sm text-headline-sm text-primary tracking-tight">
-                About this edition
-              </h2>
-              <p className="font-body-reading text-[16px] leading-[26px] text-on-surface/90">
+            <div className="space-y-2 border-t border-outline-variant/20 pt-4">
+              <h2 className="font-headline-sm text-headline-sm text-primary font-medium">Synopsis</h2>
+              <p
+                className={`font-body-reading text-[14.5px] leading-relaxed text-on-surface-variant ${
+                  !expandedSynopsis ? 'line-clamp-4' : ''
+                }`}
+              >
                 {book.synopsis}
               </p>
-              {expandedSynopsis && book.extendedSynopsis && (
-                <p className="font-body-reading text-[16px] leading-[26px] text-on-surface/90 pt-1 animate-in fade-in duration-200">
-                  {book.extendedSynopsis}
-                </p>
+              {book.synopsis?.length > 200 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedSynopsis((v) => !v)}
+                  className="text-secondary font-label-sm text-label-sm hover:underline"
+                >
+                  {expandedSynopsis ? 'Show less' : 'Read full synopsis'}
+                </button>
               )}
-              <button
-                type="button"
-                onClick={() => setExpandedSynopsis((v) => !v)}
-                className="inline-flex items-center gap-1 text-label-md font-label-md text-primary font-semibold hover:underline"
-              >
-                <span>{expandedSynopsis ? 'Show less' : 'Read full synopsis'}</span>
-                <span className="material-symbols-outlined text-[16px]">
-                  {expandedSynopsis ? 'expand_less' : 'expand_more'}
-                </span>
-              </button>
             </div>
 
-            <div className="bg-secondary-fixed/30 border border-secondary-container rounded-xl p-3.5 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-secondary-container/40 flex items-center justify-center flex-shrink-0 text-secondary">
-                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-label-md font-label-md text-on-secondary-container font-semibold">
-                    Local AI Reading Companion
-                  </span>
-                  <span className="text-[10px] bg-secondary text-on-secondary px-1.5 py-0.2 rounded font-mono font-medium">
-                    OFFLINE
-                  </span>
-                </div>
-                <p className="text-caption font-caption text-on-secondary-fixed-variant leading-relaxed">
-                  Includes spoiler-free AI X-Ray, historical character guide &amp; instant dictionary
-                  — entirely offline in your local vault.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30 flex items-center justify-between text-on-surface-variant">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-outline">
-                  font_download
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-on-surface">
+                <span className="material-symbols-outlined text-secondary text-[20px]">
+                  format_size
                 </span>
                 <span className="text-caption font-caption">Pre-formatted in Literata Book</span>
               </div>
@@ -210,16 +172,26 @@ export default function Page() {
             <button
               type="button"
               onClick={handlePrimaryAction}
-              className="w-full py-3.5 px-5 rounded-full bg-primary hover:bg-primary-container text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] transition-all duration-150"
+              disabled={downloading}
+              className="w-full py-3.5 px-5 rounded-full bg-primary hover:bg-primary-container text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] transition-all duration-150 disabled:opacity-75"
             >
-              <span className="material-symbols-outlined text-[20px]">
-                {savedToLibrary ? 'auto_stories' : 'download'}
-              </span>
-              <span>
-                {savedToLibrary
-                  ? 'Saved in Library · Open in Reader'
-                  : 'Save to Library (Offline EPUB)'}
-              </span>
+              {downloading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
+                  <span>Streaming EPUB Binary...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[20px]">
+                    {savedToLibrary ? 'auto_stories' : 'download'}
+                  </span>
+                  <span>
+                    {savedToLibrary
+                      ? 'Saved in Library · Open in Reader'
+                      : 'Save to Library (Offline EPUB)'}
+                  </span>
+                </>
+              )}
             </button>
             <button
               type="button"

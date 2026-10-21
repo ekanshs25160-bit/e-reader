@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
+import { getAllBooks } from '@/utils/db';
 
 const LIBRARY_BOOKS = [
   {
@@ -83,9 +84,40 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reading' | 'finished' | 'to-read'
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'progress'
+  const [booksList, setBooksList] = useState(LIBRARY_BOOKS);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchVaultBooks() {
+      try {
+        const vaultBooks = await getAllBooks();
+        if (vaultBooks && vaultBooks.length > 0 && active) {
+          const merged = vaultBooks.map((vb) => {
+            const staticMatch = LIBRARY_BOOKS.find((lb) => lb.id === vb.id);
+            return {
+              ...vb,
+              type: vb.type || staticMatch?.type || 'parchment',
+              coverUrl: vb.coverUrl || staticMatch?.coverUrl,
+              displayTitle: vb.displayTitle || vb.title,
+              shortAuthor: vb.shortAuthor || vb.author,
+              status: vb.status || 'to-read',
+              progress: vb.progress !== undefined ? vb.progress : 0,
+            };
+          });
+          setBooksList(merged);
+        }
+      } catch (err) {
+        console.warn('Failed to load books from vault:', err);
+      }
+    }
+    fetchVaultBooks();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredBooks = useMemo(() => {
-    let list = LIBRARY_BOOKS.filter((b) => {
+    let list = booksList.filter((b) => {
       if (activeFilter !== 'all' && b.status !== activeFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
