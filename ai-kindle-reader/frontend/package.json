@@ -1,0 +1,34 @@
+{
+  "name": "flyleaf-reader-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/literata": "^5.2.8",
+    "@fontsource-variable/newsreader": "^5.2.10",
+    "clsx": "^2.1.1",
+    "epubjs": "^0.3.93",
+    "localforage": "^1.10.0",
+    "lucide-react": "^0.453.0",
+    "material-symbols": "^0.40.2",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "react-swipeable": "^7.0.2",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.9",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14"
+  }
+}
