@@ -1,88 +1,202 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { saveBook, slugify } from '@/utils/db';
+import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import ePub from "epubjs";
+import { saveBook } from "@/utils/db";
 
-export default function Uploader({ open, onClose, onShowToast }) {
+// Helper to convert temporary blob URL into permanent Base64 image string
+async function blobUrlToBase64(blobUrl) {
+  try {
+    const response = await fetch(blobUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export default function Uploader({
+  open,
+  onClose,
+  onShowToast,
+  onUploadSuccess,
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef(null);
   const router = useRouter();
 
-  if (!open) return null;
+  // If used strictly as a modal dialog and open is false, don't render
+  if (open !== undefined && !open) {
+    return null;
+  }
 
-  const handleFile = (file) => {
+  const processEpubFile = async (file) => {
     if (!file) return;
-    setSelectedFile(file);
-  };
 
-  const handleImportConfirm = async () => {
-    if (!selectedFile) return;
-    setIsProcessing(true);
+    if (!file.name.toLowerCase().endsWith(".epub")) {
+      const msg = "Please select a valid .epub file.";
+      setError(msg);
+      if (onShowToast) onShowToast(msg);
+      return;
+    }
+
+    setIsUploading(true);
+    setError("");
 
     try {
-      const buffer = await selectedFile.arrayBuffer();
+      // 1. Read file as ArrayBuffer so epub.js can inspect it
+      const arrayBuffer = await file.arrayBuffer();
+      const book = ePub(arrayBuffer);
 
-      // Clean title from filename (e.g. "Pride_and_Prejudice.epub" -> "Pride and Prejudice")
-      const rawName = selectedFile.name.replace(/\.(epub|txt|pdf)$/i, '');
-      const cleanTitle = rawName.replace(/[-_]+/g, ' ').trim();
-      const bookId = slugify(cleanTitle);
+      // 2. Extract Title & Author metadata from EPUB package
+      const metadata = await book.loaded.metadata;
+      const title =
+        metadata?.title || file.name.replace(/\.epub$/i, "").replace(/[-_]+/g, " ").trim();
+      const rawAuthor = metadata?.creator;
+      const author =
+        typeof rawAuthor === "string"
+          ? rawAuthor
+          : rawAuthor?.name || "Unknown Author";
 
-      const bookMeta = {
-        id: bookId,
-        title: cleanTitle || 'Uploaded Book',
-        author: 'Unknown Author',
-        year: String(new Date().getFullYear()),
-        pages: 350,
-        currentPage: 1,
-        progress: 0,
-        status: 'reading',
-        category: 'Local Vault',
-        language: 'EN',
-        editionNote: 'Uploaded to Local-first Vault',
-        coverUrl: null,
-        themes: ['Personal Library', 'Local Vault'],
-        synopsis: `Locally uploaded e-book: ${selectedFile.name}`,
-        chapterLabel: 'Volume I',
-        chapterHeading: cleanTitle,
-        highlightedWord: {
-          word: 'sanctuary',
-          phonetic: '/ˈsæŋk.tʃʊə.ri/',
-          partOfSpeech: 'noun',
-          definitions: ['A quiet, undisturbed refuge for reading and contemplation.'],
-          quote: 'A quiet, undisturbed refuge for reading and contemplation.',
+      // 3. Extract Cover Image & convert to Base64 for offline persistence
+      let coverUrl = null;
+      try {
+        const rawCoverUrl = await book.coverUrl();
+        if (rawCoverUrl) {
+          coverUrl = await blobUrlToBase64(rawCoverUrl);
+        }
+      } catch (coverErr) {
+        console.warn("[Uploader] Cover extraction skipped:", coverErr);
+      }
+
+      // 4. Generate unique ID and save to localForage (IndexedDB)
+      const bookId = `local_${Date.now()}`;
+      const savedBook = await saveBook(
+        bookId,
+        {
+          id: bookId,
+          title,
+          author,
+          coverUrl,
+          fileSize: file.size,
+          progressPercentage: 0,
+          progress: 0,
+          status: "reading",
+          category: "Local Vault",
+          isUploaded: true,
+          language: metadata?.language || "EN",
+          editionNote: "Uploaded to Local-first Vault",
+          synopsis: metadata?.description || `Locally uploaded e-book: ${file.name}`,
+          chapterHeading: title,
+          addedAt: Date.now(),
         },
-        paragraphs: [
-          'Reading directly from local IndexedDB storage. Turn pages with arrow keys, touch gestures, or the controls below.',
-        ],
-      };
+        file // Saves the File/Blob directly in IndexedDB
+      );
 
-      const saved = await saveBook(bookMeta, buffer);
+      // Clean up epub.js memory
+      book.destroy();
 
       if (onShowToast) {
-        onShowToast(`Shelved "${cleanTitle}" in your Local Vault`);
+        onShowToast(`Shelved "${title}" in your Local Vault`);
       }
 
-      setSelectedFile(null);
-      setIsProcessing(false);
-      onClose();
+      if (onUploadSuccess) {
+        onUploadSuccess(savedBook);
+      }
 
-      router.push(`/reader/${saved?.id || bookId}`);
+      if (onClose) {
+        onClose();
+      }
+
+      router.push(`/reader/${savedBook?.id || bookId}`);
     } catch (err) {
-      console.error('[Uploader] Import failed:', err);
+      console.error("Failed to parse and save EPUB:", err);
+      const errMsg = "Could not process this EPUB file. Please try another edition.";
+      setError(errMsg);
       if (onShowToast) {
-        onShowToast('Could not parse EPUB file. Please try another edition.');
+        onShowToast(errMsg);
       }
-      setIsProcessing(false);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processEpubFile(file);
+    }
+  };
+
+  // Standalone inline layout when rendered outside a modal (open === undefined)
+  if (open === undefined) {
+    return (
+      <div className="w-full">
+        <label
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            if (e.dataTransfer.files?.[0]) {
+              processEpubFile(e.dataTransfer.files[0]);
+            }
+          }}
+          className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer backdrop-blur-sm transition-all ${
+            dragActive
+              ? "border-blue-500 bg-blue-500/10"
+              : "border-zinc-700 hover:border-blue-500 bg-zinc-900/50"
+          }`}
+        >
+          {isUploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm font-medium text-zinc-200">
+                Saving to device memory...
+              </span>
+            </div>
+          ) : (
+            <>
+              <span className="text-sm font-medium text-zinc-200">
+                + Import Local .EPUB Book
+              </span>
+              <span className="text-xs text-zinc-400 mt-1">
+                Stored 100% offline in IndexedDB
+              </span>
+            </>
+          )}
+          <input
+            type="file"
+            accept=".epub,application/epub+zip"
+            onChange={handleFileChange}
+            disabled={isUploading}
+            className="hidden"
+          />
+        </label>
+        {error && <p className="text-xs text-red-400 mt-2 text-center">{error}</p>}
+      </div>
+    );
+  }
+
+  // Full-featured Modal Dialog layout when open={true}
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/45 backdrop-blur-xs p-0 md:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -104,17 +218,19 @@ export default function Uploader({ open, onClose, onShowToast }) {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close modal"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close modal"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          )}
         </div>
 
-        <div
+        <label
           onDragOver={(e) => {
             e.preventDefault();
             setDragActive(true);
@@ -124,78 +240,53 @@ export default function Uploader({ open, onClose, onShowToast }) {
             e.preventDefault();
             setDragActive(false);
             if (e.dataTransfer.files?.[0]) {
-              handleFile(e.dataTransfer.files[0]);
+              processEpubFile(e.dataTransfer.files[0]);
             }
           }}
-          onClick={() => fileInputRef.current?.click()}
-          className={`cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+          className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-2xl cursor-pointer text-center transition-all ${
             dragActive
-              ? 'border-secondary bg-secondary-fixed/20'
-              : 'border-outline-variant/50 bg-surface-container-lowest/70 hover:bg-surface-container-low'
+              ? "border-secondary bg-secondary-fixed/20"
+              : "border-outline-variant/50 bg-surface-container-lowest/70 hover:bg-surface-container-low"
           }`}
         >
           <input
             ref={fileInputRef}
             type="file"
-            accept=".epub,.txt,.pdf"
+            accept=".epub,application/epub+zip"
+            onChange={handleFileChange}
+            disabled={isUploading}
             className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])}
           />
-          <span className="material-symbols-outlined text-[32px] text-secondary mb-2">
-            auto_stories
-          </span>
-          {selectedFile ? (
-            <div className="space-y-1">
-              <p className="font-body-ui-bold text-body-ui-bold text-primary truncate">
-                {selectedFile.name}
-              </p>
-              <p className="font-caption text-caption text-on-surface-variant">
-                {(selectedFile.size / 1024).toFixed(0)} KB · Ready to shelve
-              </p>
+          {isUploading ? (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <div className="w-8 h-8 border-3 border-secondary border-t-transparent rounded-full animate-spin"></div>
+              <span className="font-body-ui-bold text-body-ui-bold text-primary">
+                Extracting metadata &amp; saving to IndexedDB...
+              </span>
+              <span className="font-caption text-caption text-on-surface-variant">
+                Parsing offline EPUB package
+              </span>
             </div>
           ) : (
             <div className="space-y-1">
+              <span className="material-symbols-outlined text-[32px] text-secondary mb-2 block mx-auto">
+                auto_stories
+              </span>
               <p className="font-body-ui-bold text-body-ui-bold text-primary">
                 Drop an .epub file here, or tap to browse
               </p>
               <p className="font-caption text-caption text-on-surface-variant">
-                Supports DRM-free EPUB &amp; plain text editions
+                Extracts metadata &amp; persistent cover image offline
               </p>
             </div>
           )}
-        </div>
+        </label>
+
+        {error && (
+          <p className="text-xs text-red-400 text-center font-body-ui">{error}</p>
+        )}
 
         <div className="flex flex-col gap-2 pt-1">
-          {selectedFile ? (
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={handleImportConfirm}
-              className="w-full py-2.5 px-4 rounded-xl bg-primary text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></div>
-                  <span>Saving to IndexedDB...</span>
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                  <span>Open in Sanctuary Reader</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2.5 px-4 rounded-xl bg-primary-container text-on-primary font-body-ui-bold text-body-ui-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95 active:scale-[0.98] transition-all"
-            >
-              <span className="material-symbols-outlined text-[18px]">folder_open</span>
-              <span>Choose .epub from Device</span>
-            </button>
-          )}
-
           <Link
             href="/browse"
             onClick={onClose}

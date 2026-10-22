@@ -651,3 +651,5 @@ export function getBookById(id) {
     BOOKS[4] // default to Crime and Punishment (#2554)
   );
 }
+
+export const booksData = BOOKS;

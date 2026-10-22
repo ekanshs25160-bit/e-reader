@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { saveVocabularyWord } from '@/utils/db';
 
 const INSIGHTS = {
@@ -68,13 +68,24 @@ const INSIGHTS = {
 
 export default function AiDrawer({
   open = true,
+  isOpen,
   onClose,
-  quote = '“He had become so completely absorbed in himself, and isolated from his fellows, that he dreaded meeting, not only his landlady, but anyone at all.”',
+  quote: initialQuote,
+  selectedText,
   initialTab = 'subtext',
   bookTitle = 'Pride and Prejudice',
   bookId = 'pride-and-prejudice',
+  author,
   onShowToast,
+  autoFocusInput = false,
 }) {
+  const isDrawerOpen = isOpen !== undefined ? isOpen : open;
+  const quote =
+    selectedText ||
+    initialQuote ||
+    '“He had become so completely absorbed in himself, and isolated from his fellows, that he dreaded meeting, not only his landlady, but anyone at all.”';
+
+  const inputRef = useRef(null);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [spoilersOff, setSpoilersOff] = useState(true);
   const [followUpInput, setFollowUpInput] = useState('');
@@ -95,6 +106,15 @@ export default function AiDrawer({
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (open && autoFocusInput) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoFocusInput]);
 
   // Attempt backend definition lookup when tab is dictionary or when viewing a single word
   useEffect(() => {
@@ -166,13 +186,15 @@ export default function AiDrawer({
     setFollowUpInput('');
   };
 
+  if (!isDrawerOpen) return null;
+
   return (
     <>
       <div
         onClick={onClose}
         className="fixed inset-0 bg-primary/20 backdrop-blur-[2.5px] z-40 pointer-events-auto transition-opacity duration-300"
       />
-      <section className="fixed bottom-0 left-0 right-0 z-50 h-[72%] md:left-auto md:top-0 md:h-full md:w-[450px] md:rounded-t-none md:rounded-l-3xl md:border-t-0 md:border-l bg-surface text-on-surface flex flex-col rounded-t-[24px] border-t border-outline-variant/40 shadow-[0_-8px_32px_rgba(21,42,65,0.16)] transition-transform duration-300 ease-out overflow-hidden">
+      <section className="fixed bottom-0 left-0 right-0 z-50 h-[75dvh] max-h-[85dvh] md:left-auto md:top-0 md:h-dvh md:max-h-dvh md:w-[450px] md:rounded-t-none md:rounded-l-3xl md:border-t-0 md:border-l bg-surface text-on-surface flex flex-col rounded-t-[24px] border-t border-outline-variant/40 shadow-[0_-8px_32px_rgba(21,42,65,0.16)] transition-transform duration-300 ease-out overflow-hidden">
         <div className="w-full flex justify-center pt-2.5 pb-1 md:hidden">
           <div className="w-10 h-1 rounded-full bg-outline-variant/60"></div>
         </div>
@@ -398,13 +420,14 @@ export default function AiDrawer({
           ))}
         </div>
 
-        <footer className="p-4 bg-surface/95 border-t border-outline-variant/20 flex flex-col gap-2.5">
+        <footer className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-surface/95 border-t border-outline-variant/20 flex flex-col gap-2.5">
           <form
             onSubmit={handleSendFollowUp}
             className="flex items-center bg-surface-container rounded-full px-3.5 py-1.5 border border-outline-variant/40 focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary transition-all"
           >
             <span className="material-symbols-outlined text-[18px] text-outline mr-2">search</span>
             <input
+              ref={inputRef}
               value={followUpInput}
               onChange={(e) => setFollowUpInput(e.target.value)}
               className="w-full bg-transparent border-0 p-0 text-on-surface font-body-ui text-[13px] placeholder:text-outline focus:ring-0 focus:outline-none"

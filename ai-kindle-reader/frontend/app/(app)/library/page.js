@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getAllBooks } from '@/utils/db';
+import BookCover from '@/components/BookCover';
 
 const LIBRARY_BOOKS = [
   {
@@ -82,7 +83,7 @@ export default function Page() {
   const { openImportModal, showToast } = useTheme();
   const [viewMode, setViewMode] = useState('grid'); // 'spine' | 'grid' | 'list'
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reading' | 'finished' | 'to-read'
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reading' | 'completed' | 'uploaded'
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'progress'
   const [booksList, setBooksList] = useState(LIBRARY_BOOKS);
 
@@ -94,14 +95,20 @@ export default function Page() {
         if (vaultBooks && vaultBooks.length > 0 && active) {
           const merged = vaultBooks.map((vb) => {
             const staticMatch = LIBRARY_BOOKS.find((lb) => lb.id === vb.id);
+            const progress =
+              vb.progressPercentage !== undefined
+                ? vb.progressPercentage
+                : vb.progress !== undefined
+                ? vb.progress
+                : 0;
             return {
               ...vb,
               type: vb.type || staticMatch?.type || 'parchment',
               coverUrl: vb.coverUrl || staticMatch?.coverUrl,
               displayTitle: vb.displayTitle || vb.title,
               shortAuthor: vb.shortAuthor || vb.author,
-              status: vb.status || 'to-read',
-              progress: vb.progress !== undefined ? vb.progress : 0,
+              status: vb.status || (progress >= 100 ? 'finished' : progress > 0 ? 'reading' : 'to-read'),
+              progress,
             };
           });
           setBooksList(merged);
@@ -116,9 +123,52 @@ export default function Page() {
     };
   }, []);
 
+  const counts = useMemo(() => {
+    const reading = booksList.filter(
+      (b) => b.status === 'reading' || (b.progress > 0 && b.progress < 100)
+    ).length;
+    const completed = booksList.filter(
+      (b) => b.status === 'finished' || b.progress >= 100
+    ).length;
+    const uploaded = booksList.filter(
+      (b) =>
+        b.category === 'Local Vault' ||
+        b.editionNote?.includes('Local') ||
+        b.id?.startsWith('book-') ||
+        b.id?.startsWith('local_') ||
+        b.themes?.includes('Local Vault') ||
+        b.themes?.includes('Personal Library') ||
+        b.isUploaded
+    ).length;
+    return {
+      all: booksList.length,
+      reading,
+      completed,
+      uploaded,
+    };
+  }, [booksList]);
+
   const filteredBooks = useMemo(() => {
     let list = booksList.filter((b) => {
-      if (activeFilter !== 'all' && b.status !== activeFilter) return false;
+      if (activeFilter === 'reading') {
+        const isReading = b.status === 'reading' || (b.progress > 0 && b.progress < 100);
+        if (!isReading) return false;
+      } else if (activeFilter === 'completed' || activeFilter === 'finished') {
+        const isCompleted = b.status === 'finished' || b.progress >= 100;
+        if (!isCompleted) return false;
+      } else if (activeFilter === 'uploaded') {
+        const isUploaded =
+          b.category === 'Local Vault' ||
+          b.editionNote?.includes('Local') ||
+          b.id?.startsWith('book-') ||
+          b.id?.startsWith('local_') ||
+          b.themes?.includes('Local Vault') ||
+          b.themes?.includes('Personal Library') ||
+          b.isUploaded;
+        if (!isUploaded) return false;
+      } else if (activeFilter !== 'all' && b.status !== activeFilter) {
+        return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
@@ -131,7 +181,7 @@ export default function Page() {
       list = [...list].sort((a, b) => b.progress - a.progress);
     }
     return list;
-  }, [activeFilter, searchQuery, sortBy]);
+  }, [activeFilter, booksList, searchQuery, sortBy]);
 
   const cycleSort = () => {
     const next = sortBy === 'recent' ? 'title' : sortBy === 'title' ? 'progress' : 'recent';
@@ -409,16 +459,16 @@ export default function Page() {
             </div>
             <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
               {[
-                { id: 'all', label: 'All (6)' },
-                { id: 'reading', label: 'Reading (2)' },
-                { id: 'finished', label: 'Finished (3)' },
-                { id: 'to-read', label: 'To Read (1)' },
+                { id: 'all', label: `All (${counts.all})` },
+                { id: 'reading', label: `Reading (${counts.reading})` },
+                { id: 'completed', label: `Completed (${counts.completed})` },
+                { id: 'uploaded', label: `Uploaded (${counts.uploaded})` },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`px-3 py-1 rounded-full text-caption active:scale-95 transition-all ${
+                  className={`px-3 py-1 rounded-full text-caption active:scale-95 transition-all shrink-0 ${
                     activeFilter === tab.id
                       ? 'font-body-ui-bold bg-primary text-on-primary shadow-sm'
                       : 'font-body-ui text-on-surface-variant bg-surface-container-lowest/90 subtle-paper-border hover:bg-surface-container'
@@ -436,18 +486,29 @@ export default function Page() {
                 <Link
                   key={book.id}
                   href={`/book/${book.id}`}
-                  className="bg-surface-container-lowest/90 border border-outline-variant/30 rounded-2xl p-3.5 flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all"
+                  className="bg-surface-container-lowest/90 border border-outline-variant/30 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group"
                 >
-                  <div className="min-w-0">
-                    <h4 className="font-headline-sm text-[16px] text-primary font-medium truncate">
-                      {book.title}
-                    </h4>
-                    <p className="font-caption text-caption text-on-surface-variant">
-                      {book.author} · {book.year}
-                    </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 aspect-[2/3] shrink-0">
+                      <BookCover
+                        coverUrl={book.coverUrl}
+                        title={book.title}
+                        author={book.author}
+                        year={book.year}
+                        aspect="aspect-[2/3]"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-headline-sm text-[15px] text-primary font-medium truncate group-hover:underline">
+                        {book.title}
+                      </h4>
+                      <p className="font-caption text-caption text-on-surface-variant truncate">
+                        {book.author} · {book.year || 'Volume'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="px-2.5 py-1 rounded-full bg-surface-container text-caption font-label-sm text-primary">
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-caption font-label-sm text-primary">
                       {book.progress === 100 ? 'Done' : `${book.progress}%`}
                     </span>
                     <span className="material-symbols-outlined text-[18px] text-outline">
@@ -465,22 +526,18 @@ export default function Page() {
                   href={`/book/${book.id}`}
                   className="flex flex-col group cursor-pointer active:scale-95 transition-transform"
                 >
-                  {book.type === 'image' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-surface-container">
-                      <img
-                        alt={`Editorial book cover illustration for ${book.title}`}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        src={book.coverUrl}
-                      />
-                      <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none"></div>
-                      <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#152a41]/85 backdrop-blur-sm text-[9px] font-body-ui text-white">
-                        {book.progress}%
-                      </div>
-                    </div>
-                  )}
-
-                  {book.type === 'green-classic' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-[#2c4839] p-2 flex flex-col justify-between border-l-[3px] border-[#1e3428]">
+                  {book.coverUrl ? (
+                    <BookCover
+                      coverUrl={book.coverUrl}
+                      title={book.title}
+                      author={book.author}
+                      year={book.year}
+                      progress={book.progress}
+                      aspect="aspect-[2/3]"
+                      showProgress={true}
+                    />
+                  ) : book.type === 'green-classic' ? (
+                    <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-md subtle-paper-border bg-[#2c4839] p-2.5 flex flex-col justify-between border-l-[3px] border-[#1e3428]">
                       <div className="absolute inset-1.5 border border-amber-200/30 rounded pointer-events-none"></div>
                       <div className="text-right z-10">
                         <span className="text-[8px] font-caption text-emerald-200/80 tracking-widest">
@@ -502,10 +559,8 @@ export default function Page() {
                       </div>
                       <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/35 via-white/10 to-transparent pointer-events-none"></div>
                     </div>
-                  )}
-
-                  {book.type === 'burgundy-done' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-[#5e2730] p-2 flex flex-col justify-between border-l-[3px] border-[#3f161d]">
+                  ) : book.type === 'burgundy-done' ? (
+                    <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-md subtle-paper-border bg-[#5e2730] p-2.5 flex flex-col justify-between border-l-[3px] border-[#3f161d]">
                       <div className="absolute inset-1.5 border border-amber-100/25 rounded pointer-events-none"></div>
                       <div className="z-10 flex justify-between items-center">
                         <span
@@ -533,10 +588,8 @@ export default function Page() {
                       </div>
                       <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/35 via-white/10 to-transparent pointer-events-none"></div>
                     </div>
-                  )}
-
-                  {book.type === 'parchment' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-[#f3ede1] p-2 flex flex-col justify-between border-l-[3px] border-[#dfd4c0]">
+                  ) : book.type === 'parchment' ? (
+                    <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-md subtle-paper-border bg-[#f3ede1] p-2.5 flex flex-col justify-between border-l-[3px] border-[#dfd4c0]">
                       <div className="absolute inset-1.5 border border-[#855224]/20 rounded pointer-events-none"></div>
                       <div className="text-center pt-1 z-10">
                         <span className="material-symbols-outlined text-[14px] text-secondary/80">
@@ -558,10 +611,8 @@ export default function Page() {
                       </div>
                       <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/15 via-white/20 to-transparent pointer-events-none"></div>
                     </div>
-                  )}
-
-                  {book.type === 'dark-slate' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-[#182029] p-2 flex flex-col justify-between border-l-[3px] border-[#0f141a]">
+                  ) : book.type === 'dark-slate' ? (
+                    <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-md subtle-paper-border bg-[#182029] p-2.5 flex flex-col justify-between border-l-[3px] border-[#0f141a]">
                       <div className="text-left z-10">
                         <span className="text-[8px] font-caption text-zinc-400/80 tracking-widest">
                           VI. PTS
@@ -582,10 +633,8 @@ export default function Page() {
                       </div>
                       <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/45 via-white/5 to-transparent pointer-events-none"></div>
                     </div>
-                  )}
-
-                  {book.type === 'sky-done' && (
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden cover-curve-shadow subtle-paper-border bg-[#dce7eb] p-2 flex flex-col justify-between border-l-[3px] border-[#baccd3]">
+                  ) : book.type === 'sky-done' ? (
+                    <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-md subtle-paper-border bg-[#dce7eb] p-2.5 flex flex-col justify-between border-l-[3px] border-[#baccd3]">
                       <div className="z-10 flex justify-between items-center">
                         <span className="material-symbols-outlined text-[13px] text-primary/70">
                           yard
@@ -609,6 +658,16 @@ export default function Page() {
                       </div>
                       <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/15 via-white/20 to-transparent pointer-events-none"></div>
                     </div>
+                  ) : (
+                    <BookCover
+                      coverUrl={null}
+                      title={book.title}
+                      author={book.author}
+                      year={book.year}
+                      progress={book.progress}
+                      aspect="aspect-[2/3]"
+                      showProgress={true}
+                    />
                   )}
 
                   <div className="mt-2 flex flex-col">

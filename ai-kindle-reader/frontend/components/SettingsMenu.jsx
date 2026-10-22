@@ -85,7 +85,7 @@ export default function SettingsMenu({
         onClick={onClose}
         className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px] transition-opacity duration-300"
       />
-      <section className="fixed bottom-0 inset-x-0 md:inset-x-auto md:right-0 md:top-0 md:w-[400px] md:max-h-full md:h-full md:rounded-t-none md:rounded-l-3xl z-50 flex flex-col bg-surface-container-low text-on-surface rounded-t-3xl border-t border-black/[0.08] shadow-[0_-12px_40px_rgba(21,42,65,0.18)] max-h-[64%] overflow-hidden">
+      <section className="fixed bottom-0 inset-x-0 md:inset-x-auto md:right-0 md:top-0 md:w-[400px] md:max-h-full md:h-full md:rounded-t-none md:rounded-l-3xl z-50 flex flex-col bg-surface-container-low text-on-surface rounded-t-3xl border-t border-black/[0.08] shadow-[0_-12px_40px_rgba(21,42,65,0.18)] max-h-[70dvh] md:max-h-dvh overflow-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-0">
         <header className="relative pt-3 pb-2 flex items-center justify-between px-5">
           <div className="w-6"></div>
           <div className="w-10 h-1 bg-[#C4C6CD] rounded-full hover:bg-outline transition-colors md:hidden"></div>

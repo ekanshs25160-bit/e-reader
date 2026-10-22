@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { saveBook } from '@/utils/db';
+import BookCover from '@/components/BookCover';
 
 const TOPICS = [
   'All Classics',
@@ -220,19 +221,34 @@ export default function Page() {
     const timer = setTimeout(async () => {
       try {
         setIsSearching(true);
-        const res = await fetch(
-          `http://localhost:8000/api/catalog/search?q=${encodeURIComponent(
-            searchQuery.trim()
-          )}`
-        );
-        if (res.ok) {
+        let res;
+        try {
+          res = await fetch(
+            `/api/gutenberg/search?q=${encodeURIComponent(searchQuery.trim())}`
+          );
+        } catch {
+          res = await fetch(
+            `http://localhost:8000/api/catalog/search?q=${encodeURIComponent(
+              searchQuery.trim()
+            )}`
+          );
+        }
+        if (!res || !res.ok) {
+          res = await fetch(
+            `http://localhost:8000/api/catalog/search?q=${encodeURIComponent(
+              searchQuery.trim()
+            )}`
+          );
+        }
+
+        if (res && res.ok) {
           const json = await res.json();
           if (json?.data?.books?.length) {
             const mapped = json.data.books.map((b) => ({
               id: String(b.id),
               gutenbergId: String(b.id),
               title: b.title,
-              author: b.authors?.[0] || 'Classic Author',
+              author: Array.isArray(b.authors) ? b.authors[0] : b.author || 'Classic Author',
               rating: '4.8',
               meta: `Gutenberg #${b.id} · EPUB`,
               topic: selectedTopic,
@@ -273,53 +289,91 @@ export default function Page() {
     });
   }, [selectedTopic, searchQuery, liveSearchResults]);
 
-  // One-Tap Offline Download Handler
-  const handleDownloadBook = async (e, book) => {
-    e.stopPropagation();
+  // Download Project Gutenberg book via backend proxy and persist to localForage
+  const handleDownloadGutenbergBook = async (e, book) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     const gutenbergId = String(book.gutenbergId || book.id);
+    const bookKey = `gutenberg_${gutenbergId}`;
 
     setDownloadingIds((prev) => new Set(prev).add(book.id));
     showToast(`Downloading "${book.title}" EPUB binary...`);
 
     try {
-      // Stream EPUB binary from Express catalog download endpoint
-      const res = await fetch(`http://localhost:8000/api/catalog/download/${gutenbergId}`);
-      let arrayBuffer = null;
-      if (res.ok) {
-        arrayBuffer = await res.arrayBuffer();
+      // 1. Fetch binary EPUB stream through Next.js internal Gutenberg proxy
+      let response;
+      try {
+        response = await fetch(`/api/gutenberg/${gutenbergId}`);
+      } catch {
+        response = await fetch(`http://localhost:8000/api/catalog/download/${gutenbergId}`);
+      }
+      if (!response || !response.ok) {
+        response = await fetch(`http://localhost:8000/api/catalog/download/${gutenbergId}`);
+      }
+      if (!response || !response.ok) {
+        throw new Error("Failed to download EPUB from Project Gutenberg");
       }
 
-      // Persist book metadata and binary directly into IndexedDB
-      await saveBook(
-        {
-          id: String(book.id),
-          title: book.title,
-          author: book.author || 'Classic Author',
-          coverUrl: book.coverUrl,
-          gutenbergId,
-          status: 'to-read',
-          progress: 0,
-        },
-        arrayBuffer
-      );
+      const epubBlob = await response.blob();
+
+      const authorName = Array.isArray(book.authors)
+        ? book.authors.join(", ")
+        : book.author || "Classic Author";
+
+      const bookMeta = {
+        id: bookKey,
+        gutenbergId,
+        title: book.title,
+        author: authorName,
+        coverUrl: book.coverUrl,
+        fileSize: epubBlob.size,
+        progressPercentage: 0,
+        progress: 0,
+        status: "to-read",
+        category: "The Commons",
+        addedAt: Date.now(),
+      };
+
+      // 2. Save metadata + binary blob into localForage (IndexedDB)
+      await saveBook(bookKey, bookMeta, epubBlob);
+
+      // Mirror to book.id if different (e.g. 'pride-and-prejudice') for cross-route bookmarking
+      if (book.id && book.id !== bookKey) {
+        await saveBook(book.id, { ...bookMeta, id: String(book.id) }, epubBlob);
+      }
 
       setSavedIds((prev) => new Set(prev).add(book.id));
       showToast(`Saved "${book.title}" to offline vault!`);
-      router.push(`/book/${book.id}`);
+
+      // 3. Open directly in the Kindle Reader view
+      router.push(`/reader/${bookKey}`);
     } catch (err) {
-      console.warn('Backend download error, saving metadata:', err);
-      await saveBook({
-        id: String(book.id),
-        title: book.title,
-        author: book.author || 'Classic Author',
-        coverUrl: book.coverUrl,
+      console.warn("Backend download error, saving metadata fallback:", err);
+      const authorName = Array.isArray(book.authors)
+        ? book.authors.join(", ")
+        : book.author || "Classic Author";
+
+      const fallbackMeta = {
+        id: bookKey,
         gutenbergId,
-        status: 'to-read',
+        title: book.title,
+        author: authorName,
+        coverUrl: book.coverUrl,
+        fileSize: 0,
+        progressPercentage: 0,
         progress: 0,
-      });
+        status: "to-read",
+        category: "The Commons",
+        addedAt: Date.now(),
+      };
+
+      await saveBook(bookKey, fallbackMeta);
+      if (book.id && book.id !== bookKey) {
+        await saveBook(book.id, { ...fallbackMeta, id: String(book.id) });
+      }
+
       setSavedIds((prev) => new Set(prev).add(book.id));
       showToast(`Saved "${book.title}" to offline vault`);
-      router.push(`/book/${book.id}`);
+      router.push(`/reader/${bookKey}`);
     } finally {
       setDownloadingIds((prev) => {
         const next = new Set(prev);
@@ -328,6 +382,8 @@ export default function Page() {
       });
     }
   };
+
+  const handleDownloadBook = handleDownloadGutenbergBook;
 
   return (
     <div className="min-h-dvh min-h-full font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
@@ -527,13 +583,13 @@ export default function Page() {
                     onClick={() => router.push(`/book/${book.id}`)}
                     className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
                   >
-                    <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden bg-surface-container shadow border border-outline-variant/30">
-                      <img
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        alt={book.title}
-                        src={book.coverUrl}
-                      />
-                    </div>
+                    <BookCover
+                      coverUrl={book.coverUrl}
+                      title={book.title}
+                      author={book.author}
+                      year={book.year}
+                      aspect="aspect-[2/3]"
+                    />
                     <div className="min-w-0">
                       <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider">
                         {book.author}
@@ -578,13 +634,14 @@ export default function Page() {
                     className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3.5 flex items-center justify-between gap-3.5 shadow-sm hover:shadow-md transition-shadow backdrop-blur-sm cursor-pointer"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="relative w-14 h-20 shrink-0 rounded-md overflow-hidden bg-surface-container shadow border border-outline-variant/30">
-                        <img
-                          className="w-full h-full object-cover"
-                          alt={book.title}
-                          src={book.coverUrl}
+                      <div className="w-14 aspect-[2/3] shrink-0">
+                        <BookCover
+                          coverUrl={book.coverUrl}
+                          title={book.title}
+                          author={book.author}
+                          year={book.year}
+                          aspect="aspect-[2/3]"
                         />
-                        <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-r from-black/25 to-transparent"></div>
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">

@@ -129,17 +129,17 @@ export default function AppShell({ children }) {
       </aside>
 
       {/* Content: full-bleed on phones, centred column on bigger screens */}
-      <main className="md:pl-20 lg:pl-64">
+      <main className="md:pl-20 lg:pl-64 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
         <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-6xl">{children}</div>
       </main>
 
       {/* Bottom bar (phones only) */}
       <nav
         aria-label="Primary"
-        className="md:hidden fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pointer-events-none"
+        className="md:hidden fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] pointer-events-none"
       >
         <div
-          className={`pointer-events-auto flex w-full max-w-md items-center justify-between rounded-full border px-2 py-1.5 shadow-lg backdrop-blur-md ${
+          className={`pointer-events-auto flex w-full max-w-md items-center justify-between rounded-full border px-2 py-1.5 mb-2 shadow-lg backdrop-blur-md ${
             isNight
               ? 'border-white/[0.08] bg-[#181E2C]/95 text-[#F3F1EC]'
               : 'border-black/5 bg-surface-container-lowest/90 text-on-surface'

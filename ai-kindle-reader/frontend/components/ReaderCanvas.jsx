@@ -1,306 +1,238 @@
-'use client';
+"use client";
 
 import React, {
   useEffect,
   useRef,
   useState,
-  useImperativeHandle,
-  forwardRef,
   useCallback,
-} from 'react';
-import { PALETTES, TYPEFACES } from './SettingsMenu';
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import ePub from "epubjs";
 
-const PALETTE_THEME_RULES = {
-  paper: {
-    body: {
-      background: '#FAF8F5 !important',
-      color: '#1E1C1A !important',
-      padding: '0 20px !important',
-      margin: '0 auto !important',
-    },
-    'p, span, div, li': {
-      color: '#1E1C1A !important',
-    },
-    'a, a:link, a:visited': {
-      color: '#855224 !important',
-      'text-decoration': 'none !important',
-    },
-    '::selection': {
-      background: '#ffbb84 !important',
-      color: '#152a41 !important',
-    },
-  },
-  sepia: {
-    body: {
-      background: '#F4ECD8 !important',
-      color: '#2C2214 !important',
-      padding: '0 20px !important',
-      margin: '0 auto !important',
-    },
-    'p, span, div, li': {
-      color: '#2C2214 !important',
-    },
-    'a, a:link, a:visited': {
-      color: '#7B4D22 !important',
-      'text-decoration': 'none !important',
-    },
-    '::selection': {
-      background: '#dfcda6 !important',
-      color: '#2C2214 !important',
-    },
-  },
-  night: {
-    body: {
-      background: '#141824 !important',
-      color: '#E6E4DD !important',
-      padding: '0 20px !important',
-      margin: '0 auto !important',
-    },
-    'p, span, div, li': {
-      color: '#E6E4DD !important',
-    },
-    'a, a:link, a:visited': {
-      color: '#D8A868 !important',
-      'text-decoration': 'none !important',
-    },
-    '::selection': {
-      background: '#2B384E !important',
-      color: '#F3F1EC !important',
-    },
-  },
-  oled: {
-    body: {
-      background: '#050505 !important',
-      color: '#CFCFCF !important',
-      padding: '0 20px !important',
-      margin: '0 auto !important',
-    },
-    'p, span, div, li': {
-      color: '#CFCFCF !important',
-    },
-    'a, a:link, a:visited': {
-      color: '#D8A868 !important',
-      'text-decoration': 'none !important',
-    },
-    '::selection': {
-      background: '#333333 !important',
-      color: '#FFFFFF !important',
-    },
-  },
+const THEME_PALETTES = {
+  day: { bg: "#FDFBF7", text: "#111111" },
+  paper: { bg: "#FDFBF7", text: "#111111" },
+  sepia: { bg: "#F4ECD8", text: "#2C2214" },
+  night: { bg: "#000000", text: "#A0A0A0" },
+  oled: { bg: "#000000", text: "#A0A0A0" },
+  dark: { bg: "#000000", text: "#A0A0A0" },
 };
 
 const ReaderCanvas = forwardRef(function ReaderCanvas(
   {
-    file = null, // ArrayBuffer | Blob | string (URL)
-    initialCfi = null,
-    settings = {
-      palette: 'paper',
-      fontSize: 18.5,
-      typeface: 'literata',
-      align: 'justify',
-      lineHeight: '1.75',
-      margins: 'normal',
-    },
+    bookBlob,
+    file, // alias for bookBlob
+    fallbackUrl,
+    initialCfi,
+    theme = "night",
+    fontSize = 18,
+    fontFamily = "serif",
+    settings,
     onLocationChange,
+    onTextSelect,
     onTextSelected,
+    onToggleMenu,
     onReady,
     fallbackContent = null,
-    className = '',
     children,
   },
   ref
 ) {
-  const containerRef = useRef(null);
-  const bookRef = useRef(null);
+  const activeBlob = bookBlob || file;
+  const viewerRef = useRef(null);
   const renditionRef = useRef(null);
+  const bookRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [pageInfo, setPageInfo] = useState({ current: 1, total: 1, chapter: "" });
 
-  const [isLoading, setIsLoading] = useState(Boolean(file));
-  const [loadError, setLoadError] = useState(null);
-  const [hasBinary, setHasBinary] = useState(Boolean(file));
+  const handleNext = useCallback(() => {
+    if (renditionRef.current) {
+      renditionRef.current.next();
+    }
+  }, []);
 
-  // Expose imperative API for parent controllers
-  useImperativeHandle(ref, () => ({
-    next: () => renditionRef.current?.next(),
-    prev: () => renditionRef.current?.prev(),
-    goToCfi: (cfi) => renditionRef.current?.display(cfi),
-    goToPercentage: (pct) => {
-      if (!renditionRef.current || !bookRef.current) return;
+  const handlePrev = useCallback(() => {
+    if (renditionRef.current) {
+      renditionRef.current.prev();
+    }
+  }, []);
+
+  const handleGoToCfi = useCallback((targetCfi) => {
+    if (renditionRef.current && targetCfi) {
+      renditionRef.current.display(targetCfi);
+    }
+  }, []);
+
+  const handleGoToPercentage = useCallback((percentage) => {
+    if (renditionRef.current && bookRef.current?.locations) {
       try {
-        const locations = bookRef.current.locations;
-        if (locations && locations.total) {
-          const targetCfi = locations.cfiFromPercentage(pct / 100);
-          if (targetCfi) renditionRef.current.display(targetCfi);
+        const pct = percentage > 1 ? percentage / 100 : percentage;
+        const cfi = bookRef.current.locations.cfiFromPercentage(pct);
+        if (cfi) {
+          renditionRef.current.display(cfi);
         }
       } catch (err) {
-        console.warn('[ReaderCanvas] Go to percentage failed:', err);
+        console.warn("[ReaderCanvas] Failed to go to percentage:", err);
       }
-    },
+    }
+  }, []);
+
+  // Expose imperative API for parent HUD controls (Scrubber, Bottom bar, TOC jump)
+  useImperativeHandle(ref, () => ({
+    prev: handlePrev,
+    next: handleNext,
+    goToCfi: handleGoToCfi,
+    goToPercentage: handleGoToPercentage,
     getRendition: () => renditionRef.current,
     getBook: () => bookRef.current,
   }));
 
-  const applyStyles = useCallback(
-    (rendition, currentSettings) => {
-      if (!rendition) return;
-      try {
-        const pal = currentSettings.palette || 'paper';
-        const tf = TYPEFACES.find((t) => t.id === currentSettings.typeface) || TYPEFACES[0];
-
-        // Register themes
-        Object.entries(PALETTE_THEME_RULES).forEach(([themeKey, rules]) => {
-          rendition.themes.register(themeKey, rules);
-        });
-
-        rendition.themes.select(pal);
-        rendition.themes.fontSize(`${currentSettings.fontSize || 18.5}px`);
-        rendition.themes.font(tf.family);
-
-        // Apply alignment and line-height overrides
-        rendition.themes.override('line-height', `${currentSettings.lineHeight || 1.75} !important`);
-        rendition.themes.override('text-align', `${currentSettings.align || 'justify'} !important`);
-      } catch (err) {
-        console.warn('[ReaderCanvas] Failed applying styles to rendition:', err);
-      }
-    },
-    []
-  );
-
-  // Initialize and mount epub.js when `file` is provided
+  // 1. Mount & Load EPUB (Converts Blob -> ArrayBuffer so epub.js never fails)
   useEffect(() => {
-    let isCancelled = false;
-
-    if (!file) {
-      setHasBinary(false);
-      setIsLoading(false);
-      return;
-    }
-
-    setHasBinary(true);
-    setIsLoading(true);
-    setLoadError(null);
+    let isMounted = true;
 
     async function initEpub() {
+      if (!viewerRef.current) return;
+      if (!activeBlob && !fallbackUrl) return;
+
+      setIsReady(false);
+      setLoadError("");
+      viewerRef.current.innerHTML = "";
+
       try {
-        const ePubModule = await import('epubjs');
-        const ePub = ePubModule.default || ePubModule;
+        let bookInput = fallbackUrl;
 
-        if (isCancelled || !containerRef.current) return;
-
-        // Clean previous instances if any
-        if (renditionRef.current) {
-          try {
-            renditionRef.current.destroy();
-          } catch {}
-          renditionRef.current = null;
-        }
-        if (bookRef.current) {
-          try {
-            bookRef.current.destroy();
-          } catch {}
-          bookRef.current = null;
+        // CRITICAL FIX: epub.js requires an ArrayBuffer when loading from IndexedDB Blob/File
+        if (activeBlob) {
+          if (activeBlob instanceof ArrayBuffer) {
+            bookInput = activeBlob;
+          } else if (typeof activeBlob.arrayBuffer === "function") {
+            bookInput = await activeBlob.arrayBuffer();
+          } else {
+            bookInput = activeBlob;
+          }
         }
 
-        containerRef.current.innerHTML = '';
-
-        const book = ePub(file);
+        const book = ePub(bookInput);
         bookRef.current = book;
 
-        const rendition = book.renderTo(containerRef.current, {
-          width: '100%',
-          height: '100%',
-          flow: 'paginated',
-          spread: 'none',
-          manager: 'default',
+        const rendition = book.renderTo(viewerRef.current, {
+          width: "100%",
+          height: "100%",
+          flow: "paginated",
+          manager: "default",
+          spread: "none",
+          allowScriptedContent: true,
         });
         renditionRef.current = rendition;
 
-        // Apply visual themes
-        applyStyles(rendition, settings);
+        // Attach relocated listener IMMEDIATELY (do not wait for locations.generate)
+        rendition.on("relocated", (location) => {
+          if (!isMounted || !location?.start) return;
 
-        // Track text selection for Dictionary & AI Companion
-        rendition.on('selected', (cfiRange, contents) => {
-          const selection = contents.window.getSelection();
-          const selectedText = selection ? selection.toString().trim() : '';
-          if (selectedText && onTextSelected) {
-            onTextSelected(selectedText, cfiRange);
+          const cfi = location.start.cfi;
+          const displayedPage = location.start.displayed?.page || 1;
+          const displayedTotal = location.start.displayed?.total || 1;
+
+          let progress = 0;
+          if (book.locations && book.locations.length() > 0) {
+            progress = book.locations.percentageFromCfi(cfi) || 0;
+          } else {
+            progress = displayedPage / Math.max(1, displayedTotal);
           }
-        });
 
-        // Track page turns and location changes
-        rendition.on('relocated', (location) => {
-          if (!location) return;
-          const percentage = book.locations?.total
-            ? Math.round(book.locations.percentageFromCfi(location.start.cfi) * 100)
-            : Math.round((location.start.percentage || 0) * 100);
-
-          let chapterTitle = 'Chapter';
-          try {
-            const currentNav = book.navigation?.get(location.start.href);
-            if (currentNav?.label) {
-              chapterTitle = currentNav.label.trim();
-            }
-          } catch {}
-
-          if (onLocationChange) {
-            onLocationChange({
-              cfi: location.start.cfi,
-              percentage,
-              chapter: chapterTitle,
-              displayed: location.start.displayed,
-            });
+          let chapterLabel = "";
+          if (book.navigation) {
+            const navItem = book.navigation.get(location.start.href);
+            if (navItem?.label) chapterLabel = navItem.label.trim();
           }
-        });
 
-        // Keyboard arrow navigation
-        const handleKeyDown = (e) => {
-          if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-            rendition.next();
-          } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-            rendition.prev();
-          }
-        };
-
-        rendition.on('keydown', handleKeyDown);
-        window.addEventListener('keydown', handleKeyDown);
-
-        // Generate locations for percentage calculation
-        book.ready
-          .then(async () => {
-            if (isCancelled) return;
-            try {
-              await book.locations.generate(1024);
-            } catch (locErr) {
-              console.warn('[ReaderCanvas] Location generation warning:', locErr);
-            }
-
-            const metadata = await book.loaded.metadata;
-            const navigation = await book.loaded.navigation;
-
-            if (onReady) {
-              onReady({
-                metadata,
-                toc: navigation?.toc || [],
-                rendition,
-                book,
-              });
-            }
-
-            setIsLoading(false);
-          })
-          .catch((err) => {
-            if (!isCancelled) {
-              console.warn('[ReaderCanvas] Book ready warning:', err);
-              setIsLoading(false);
-            }
+          setPageInfo({
+            current: displayedPage,
+            total: displayedTotal,
+            chapter: chapterLabel,
           });
 
-        // Display initial CFI or start
+          onLocationChange &&
+            onLocationChange({
+              cfi,
+              progress,
+              percentage: progress,
+              chapter: chapterLabel,
+              page: displayedPage,
+              totalPages: displayedTotal,
+            });
+        });
+
+        // Hook directly into every rendered chapter iframe for reliable Selection & Taps
+        rendition.hooks.content.register((contents) => {
+          const doc = contents.document;
+          const win = contents.window;
+
+          // Detect word or sentence selection on both desktop (mouseup) & mobile (touchend)
+          const checkSelection = () => {
+            setTimeout(() => {
+              const sel = win.getSelection();
+              const text = sel ? sel.toString().trim() : "";
+              if (text.length > 0) {
+                // Grab surrounding sentence for context
+                const anchorText = sel.anchorNode?.textContent || text;
+                const payload = {
+                  text,
+                  contextSentence: anchorText.slice(0, 300),
+                };
+                if (onTextSelect) onTextSelect(payload);
+                if (onTextSelected) onTextSelected(text, null, payload);
+              }
+            }, 60);
+          };
+
+          doc.addEventListener("mouseup", checkSelection);
+          doc.addEventListener("touchend", checkSelection);
+
+          // Keyboard support inside iframe
+          doc.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowRight") rendition.next();
+            if (e.key === "ArrowLeft") rendition.prev();
+          });
+        });
+
+        // Also listen to epub.js native click event for tap-zones inside iframe
+        rendition.on("click", (event) => {
+          const win = event.view || window;
+          const sel = win.getSelection?.();
+          if (sel && sel.toString().trim().length > 0) return;
+
+          const width = win.innerWidth || window.innerWidth;
+          const xRatio = event.clientX / width;
+
+          if (xRatio > 0.72) {
+            rendition.next();
+          } else if (xRatio < 0.28) {
+            rendition.prev();
+          } else {
+            onToggleMenu && onToggleMenu();
+          }
+        });
+
         await rendition.display(initialCfi || undefined);
+        if (isMounted) setIsReady(true);
+
+        // Generate global book locations in background for accurate 0-100% progress
+        book.ready
+          .then(() => {
+            if (onReady) onReady(book);
+            return book.locations.generate(1600);
+          })
+          .catch((readyErr) => {
+            console.warn("[ReaderCanvas] Background location notice:", readyErr);
+          });
       } catch (err) {
-        if (!isCancelled) {
-          console.error('[ReaderCanvas] Error loading EPUB binary:', err);
-          setLoadError(err.message || 'Failed to render EPUB file');
-          setIsLoading(false);
+        console.error("EPUB Render Error:", err);
+        if (isMounted) {
+          setLoadError("Failed to render book file. Please re-import the EPUB.");
         }
       }
     }
@@ -308,127 +240,145 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
     initEpub();
 
     return () => {
-      isCancelled = true;
-      if (renditionRef.current) {
-        try {
-          renditionRef.current.destroy();
-        } catch {}
-        renditionRef.current = null;
-      }
+      isMounted = false;
       if (bookRef.current) {
-        try {
-          bookRef.current.destroy();
-        } catch {}
-        bookRef.current = null;
+        bookRef.current.destroy();
       }
     };
-  }, [file]);
+  }, [activeBlob, fallbackUrl]);
 
-  // Update styles whenever settings change
+  // 2. Apply Theme, Font Size & Family Dynamically
   useEffect(() => {
-    if (renditionRef.current) {
-      applyStyles(renditionRef.current, settings);
-    }
-  }, [settings, applyStyles]);
+    const rendition = renditionRef.current;
+    if (!rendition) return;
 
-  // If a real .epub file is present, render the epub.js canvas container
-  if (hasBinary) {
-    const activePalette = PALETTES.find((p) => p.id === settings.palette) || PALETTES[0];
-    return (
-      <div
-        className={`relative w-full h-full flex flex-col items-center justify-center select-text transition-colors duration-200 ${className}`}
-        style={{
-          backgroundColor: activePalette.readerBg,
-          color: activePalette.readerText,
-        }}
-      >
-        {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-surface/80 backdrop-blur-xs">
-            <div className="w-9 h-9 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="font-caption text-caption text-on-surface-variant animate-pulse">
-              Opening in Sanctuary Reader...
-            </p>
-          </div>
-        )}
+    const chosenTheme = settings?.palette || theme;
+    const chosenFontSize = settings?.fontSize || fontSize;
+    const chosenFontFamily = settings?.typeface || fontFamily;
 
-        {loadError && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center gap-2">
-            <span className="material-symbols-outlined text-[32px] text-error">error</span>
-            <p className="font-body-ui-bold text-on-surface">Unable to load EPUB file</p>
-            <p className="font-caption text-caption text-on-surface-variant max-w-sm">{loadError}</p>
-          </div>
-        )}
+    const palette = THEME_PALETTES[chosenTheme] || THEME_PALETTES.night;
+    const fontStack =
+      chosenFontFamily === "sans" || chosenFontFamily === "inter"
+        ? "'Inter', -apple-system, sans-serif"
+        : chosenFontFamily === "newsreader"
+        ? "'NewsreaderVariable', 'Newsreader', Georgia, serif"
+        : chosenFontFamily === "literata"
+        ? "'LiterataVariable', 'Literata', Georgia, serif"
+        : "'Merriweather', 'Georgia', serif";
 
-        {/* EPUB.js iframe mounts into this container */}
-        <div
-          ref={containerRef}
-          className="w-full h-full flex-1 overflow-hidden"
-          style={{
-            maxWidth:
-              settings.margins === 'compact'
-                ? '900px'
-                : settings.margins === 'wide'
-                ? '640px'
-                : '760px',
-          }}
-        />
-      </div>
-    );
-  }
+    rendition.themes.default({
+      "html, body": {
+        background: `${palette.bg} !important`,
+        color: `${palette.text} !important`,
+        "font-family": `${fontStack} !important`,
+        padding: "0 12px !important",
+        "-webkit-user-select": "text !important",
+        "user-select": "text !important",
+      },
+      p: {
+        "text-align": "justify !important",
+        "line-height": "1.65 !important",
+        "font-size": `${chosenFontSize}px !important`,
+        "text-indent": "1.25em !important",
+        "margin-top": "0 !important",
+        "margin-bottom": "0.35em !important",
+      },
+      "a, h1, h2, h3, h4, span, div": {
+        color: `${palette.text} !important`,
+      },
+    });
+    rendition.themes.fontSize(`${chosenFontSize}px`);
+  }, [theme, fontSize, fontFamily, settings, isReady]);
 
-  // Graceful fallback for built-in sample chapters when no binary .epub is mounted
-  const activePalette = PALETTES.find((p) => p.id === settings.palette) || PALETTES[0];
-  const activeTypeface = TYPEFACES.find((t) => t.id === settings.typeface) || TYPEFACES[0];
+  // 3. Window Keyboard Arrow Listener
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "ArrowRight") handleNext();
+      if (e.key === "ArrowLeft") handlePrev();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleNext, handlePrev]);
+
+  const activeTheme = settings?.palette || theme;
+  const activePalette = THEME_PALETTES[activeTheme] || THEME_PALETTES.night;
 
   return (
     <div
-      className={`w-full mx-auto select-text transition-colors duration-200 ${className}`}
-      style={{
-        backgroundColor: activePalette.readerBg,
-        color: activePalette.readerText,
-      }}
+      className="relative w-full h-dvh overflow-hidden flex flex-col transition-colors duration-300"
+      style={{ backgroundColor: activePalette.bg, color: activePalette.text }}
     >
-      {children ? (
-        children
-      ) : fallbackContent ? (
-        <article
-          className="relative max-w-full"
-          style={{
-            fontFamily: activeTypeface.family,
-            fontSize: `${settings.fontSize || 18.5}px`,
-            lineHeight: settings.lineHeight || 1.75,
-            textAlign: settings.align || 'justify',
-            color: activePalette.readerText,
-          }}
-        >
-          {fallbackContent.chapterHeading && (
-            <header className="text-center my-8 space-y-2">
-              <span className="text-secondary/70 font-label-sm tracking-widest text-caption uppercase">
-                {fallbackContent.chapterLabel || 'Chapter'}
-              </span>
-              <h2 className="font-headline-lg text-headline-lg tracking-tight font-normal">
-                {fallbackContent.chapterHeading}
-              </h2>
-              <div className="w-12 h-px bg-outline-variant/40 mx-auto mt-4"></div>
-            </header>
-          )}
-
-          {fallbackContent.paragraphs?.map((para, idx) => (
-            <p key={idx} className="book-paragraph mb-4 leading-relaxed">
-              {idx === 0 && (
-                <span className="float-left text-5xl font-headline-lg leading-none pt-1 pr-3 font-normal text-primary">
-                  {para.charAt(0)}
-                </span>
-              )}
-              {idx === 0 ? para.slice(1) : para}
-            </p>
-          ))}
-        </article>
-      ) : (
-        <div className="py-12 text-center text-on-surface-variant font-caption">
-          No content to display
+      {/* Loading State */}
+      {!isReady && !loadError && (activeBlob || fallbackUrl) && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm text-zinc-300">Opening book pages...</p>
         </div>
       )}
+
+      {/* Error State */}
+      {loadError && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
+          <p className="text-red-400 text-sm mb-3">{loadError}</p>
+        </div>
+      )}
+
+      {/* EPUB Viewport Container */}
+      <div ref={viewerRef} className="w-full flex-1 pt-10 pb-8 px-2" />
+
+      {/* Static Fallback Container when no EPUB binary is loaded yet */}
+      {!activeBlob && !fallbackUrl && (fallbackContent || children) && (
+        <div className="w-full flex-1 overflow-y-auto pt-10 pb-16 px-4">
+          {children || (
+            <div className="max-w-prose mx-auto space-y-4">
+              <h2 className="text-2xl font-serif text-center mb-2">
+                {fallbackContent.title}
+              </h2>
+              <p className="text-center text-sm opacity-70 mb-6">
+                By {fallbackContent.author}
+              </p>
+              {fallbackContent.paragraphs?.map((p, idx) => (
+                <p key={idx} className="leading-relaxed text-justify indent-6">
+                  {p}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* GUARANTEED EDGE PAGE-FLIP BUTTONS (Works even if iframe swallows clicks) */}
+      <button
+        type="button"
+        aria-label="Previous Page"
+        onClick={handlePrev}
+        className="fixed left-0 top-14 bottom-12 w-10 z-10 flex items-center justify-start pl-1 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity"
+      >
+        <span className="bg-zinc-900/70 text-white text-xs px-1.5 py-3 rounded-r-md backdrop-blur-sm">
+          ‹
+        </span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Next Page"
+        onClick={handleNext}
+        className="fixed right-0 top-14 bottom-12 w-12 z-10 flex items-center justify-end pr-1 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity"
+      >
+        <span className="bg-zinc-900/70 text-white text-xs px-1.5 py-3 rounded-l-md backdrop-blur-sm">
+          ›
+        </span>
+      </button>
+
+      {/* Real-Time Kindle Bottom Status Bar */}
+      <div className="w-full px-6 py-2 flex items-center justify-between text-[11px] opacity-60 pointer-events-none">
+        <span className="truncate max-w-[55%]">
+          {pageInfo.chapter || "Reading"}
+        </span>
+        <span>
+          Page {pageInfo.current} of {pageInfo.total}
+        </span>
+      </div>
     </div>
   );
 });
