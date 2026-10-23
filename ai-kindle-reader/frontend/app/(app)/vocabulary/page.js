@@ -59,6 +59,11 @@ function HighlightedSentence({ sentence, word }) {
 }
 
 export default function VocabularyPage() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const router = useRouter();
   const { showToast } = useTheme();
 
@@ -361,6 +366,10 @@ export default function VocabularyPage() {
       setQuizFlipped(false);
     }
   };
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   return (
     <div className="min-h-dvh bg-background text-on-surface antialiased font-body-ui selection:bg-secondary-container/60">

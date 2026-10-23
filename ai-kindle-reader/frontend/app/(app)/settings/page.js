@@ -50,6 +50,11 @@ function getInitials(name) {
 }
 
 export default function SettingsPage() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const router = useRouter();
   const {
     themeMode,
@@ -249,6 +254,10 @@ export default function SettingsPage() {
       setIsErasing(false);
     }
   };
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   return (
     <div className="min-h-dvh bg-paper-wash text-on-surface antialiased font-body-ui selection:bg-secondary-fixed selection:text-on-secondary-fixed">

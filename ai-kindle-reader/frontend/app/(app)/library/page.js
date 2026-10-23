@@ -155,6 +155,11 @@ function ShelfSpine({ book }) {
 }
 
 export default function Page() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const router = useRouter();
   const { openImportModal, showToast } = useTheme();
 
@@ -294,6 +299,10 @@ export default function Page() {
         0),
     0
   );
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   return (
     <div className="min-h-dvh bg-background text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary">

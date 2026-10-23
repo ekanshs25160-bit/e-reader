@@ -46,6 +46,11 @@ function getTimeGreeting() {
 }
 
 export default function HomePage() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const router = useRouter();
   const { userName, userAvatar, openImportModal } = useTheme();
 
@@ -57,7 +62,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
     async function loadHomeDashboard() {
       try {
@@ -69,7 +74,7 @@ export default function HomePage() {
             getAllHighlights(),
           ]);
 
-        if (isMounted) {
+        if (active) {
           const loadedBooks = (vaultBooks || []).map((b) => ({
             ...b,
             hasBinary: Boolean(b.hasBinary),
@@ -130,7 +135,7 @@ export default function HomePage() {
         }
       } catch (err) {
         console.warn('[Home Dashboard] Failed loading vault data:', err);
-        if (isMounted) {
+        if (active) {
           setBooks([]);
           setLoading(false);
         }
@@ -140,7 +145,7 @@ export default function HomePage() {
     loadHomeDashboard();
 
     return () => {
-      isMounted = false;
+      active = false;
     };
   }, []);
 
@@ -184,6 +189,10 @@ export default function HomePage() {
 
   // Real vocabulary only (last 3 items)
   const recentLookups = vocabWords.slice(0, 3);
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   return (
     <div className="min-h-dvh bg-surface text-on-surface antialiased selection:bg-secondary-container/40 selection:text-secondary">

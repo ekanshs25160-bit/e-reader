@@ -278,6 +278,11 @@ const CATALOG_BOOKS = [
 ];
 
 export default function Page() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const router = useRouter();
   const { openImportModal, showToast } = useTheme();
 
@@ -503,6 +508,10 @@ export default function Page() {
   };
 
   const handleDownloadBook = handleDownloadGutenbergBook;
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   return (
     <div className="min-h-dvh min-h-full font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
