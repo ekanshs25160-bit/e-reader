@@ -17,88 +17,148 @@ const TOPICS = [
   'Essays',
 ];
 
+// Helper to dynamically calculate spine dimensions based on title length
+function getSpineDimensions(title) {
+  const len = (title || '').length;
+  if (len >= 18) {
+    // Big title: e.g. "Crime and Punishment" (20 chars)
+    // Spine is tall and wide enough to fit the full title, and fits comfortably in the shelf
+    return {
+      height: 'h-56 sm:h-60',
+      width: 'w-12 sm:w-14',
+      fontSize: 'text-[10px] sm:text-[10.5px]',
+      tracking: 'tracking-tight',
+    };
+  } else if (len >= 14) {
+    // Medium-long title
+    return {
+      height: 'h-48 sm:h-52',
+      width: 'w-11 sm:w-12',
+      fontSize: 'text-[10.5px] sm:text-[11px]',
+      tracking: 'tracking-normal',
+    };
+  } else if (len >= 10) {
+    // Medium title: e.g. "Frankenstein" (12 chars), "The Odyssey" (11 chars), "Meditations" (11 chars)
+    return {
+      height: 'h-44 sm:h-48',
+      width: 'w-10 sm:w-11',
+      fontSize: 'text-[11px]',
+      tracking: 'tracking-normal',
+    };
+  } else if (len >= 8) {
+    // Short title: e.g. "Moby Dick" (9 chars)
+    return {
+      height: 'h-36 sm:h-40',
+      width: 'w-9 sm:w-10',
+      fontSize: 'text-[11px]',
+      tracking: 'tracking-normal',
+    };
+  } else {
+    // Very short title: e.g. "Dracula" (7 chars)
+    // Spine is compact and smaller
+    return {
+      height: 'h-32 sm:h-36',
+      width: 'w-8 sm:w-9',
+      fontSize: 'text-[11px]',
+      tracking: 'tracking-wide',
+    };
+  }
+}
+
 const TRENDING_SPINES = [
   {
     id: 'crime-and-punishment',
     gutenbergId: '2554',
-    height: 'h-44 sm:h-48',
+    height: 'h-56 sm:h-60',
+    width: 'w-12 sm:w-14',
     bg: 'bg-[#1a2b3c]',
     topType: 'text',
     top: 'VIII',
     topColor: 'text-[#e0b878]',
     title: 'Crime and Punishment',
     titleColor: 'text-surface',
-    maxH: 'max-h-28',
+    fontSize: 'text-[10px] sm:text-[10.5px]',
+    tracking: 'tracking-tight',
     author: 'Dostoevsky',
     authorColor: 'text-white/70',
   },
   {
     id: 'frankenstein',
     gutenbergId: '84',
-    height: 'h-40 sm:h-44',
+    height: 'h-44 sm:h-48',
+    width: 'w-10 sm:w-11',
     bg: 'bg-[#3a4d3f]',
     topType: 'icon',
     top: 'spa',
     topColor: 'text-[#a8c3af]',
     title: 'Frankenstein',
     titleColor: 'text-[#e6ede7]',
-    maxH: 'max-h-24',
+    fontSize: 'text-[11px]',
+    tracking: 'tracking-normal',
     author: 'M. Shelley',
     authorColor: 'text-[#a8c3af]',
   },
   {
     id: 'odyssey',
     gutenbergId: '1727',
-    height: 'h-48 sm:h-52',
+    height: 'h-44 sm:h-48',
+    width: 'w-10 sm:w-11',
     bg: 'bg-[#8a4229]',
     topType: 'text-serif',
     top: 'Ω',
     topColor: 'text-[#ffd6b8]',
     title: 'The Odyssey',
     titleColor: 'text-[#fff0e6]',
-    maxH: 'max-h-32',
+    fontSize: 'text-[11px]',
+    tracking: 'tracking-normal',
     author: 'Homer',
     authorColor: 'text-[#ffd6b8]',
   },
   {
     id: 'meditations',
     gutenbergId: '2680',
-    height: 'h-42 sm:h-46',
+    height: 'h-40 sm:h-44',
+    width: 'w-10 sm:w-10',
     bg: 'bg-[#7d5628]',
     topType: 'icon',
     top: 'star',
     topColor: 'text-[#ffe09e]',
     title: 'Meditations',
     titleColor: 'text-[#fff4df]',
-    maxH: 'max-h-26',
+    fontSize: 'text-[11px]',
+    tracking: 'tracking-normal',
     author: 'Aurelius',
     authorColor: 'text-[#ffe09e]',
   },
   {
     id: 'moby-dick',
     gutenbergId: '2701',
-    height: 'h-46 sm:h-50',
+    height: 'h-36 sm:h-40',
+    width: 'w-9 sm:w-10',
     bg: 'bg-[#22454a]',
     topType: 'icon',
     top: 'sailing',
     topColor: 'text-[#84bcc4]',
     title: 'Moby Dick',
     titleColor: 'text-[#e0f1f3]',
-    maxH: 'max-h-30',
+    fontSize: 'text-[11px]',
+    tracking: 'tracking-normal',
     author: 'Melville',
     authorColor: 'text-[#84bcc4]',
   },
   {
     id: 'dracula',
     gutenbergId: '345',
-    height: 'h-44 sm:h-48',
+    height: 'h-32 sm:h-36',
+    width: 'w-8 sm:w-9',
     bg: 'bg-[#4a1c24]',
     topType: 'icon',
     top: 'cruelty_free',
     topColor: 'text-[#e89ca9]',
     title: 'Dracula',
     titleColor: 'text-[#fbecee]',
-    maxH: 'max-h-28',
+    fontSize: 'text-[11px]',
+    tracking: 'tracking-wide',
     author: 'B. Stoker',
     authorColor: 'text-[#e89ca9]',
   },
@@ -571,29 +631,57 @@ export default function Page() {
               <span className="font-caption text-[11px] text-outline font-medium">Swipe to browse</span>
             </div>
 
-            <div className="relative bg-surface-container-low/70 border border-outline-variant/30 rounded-2xl p-4 pt-5 shadow-xs">
-              <div className="flex items-end justify-around gap-2 px-1">
-                {TRENDING_SPINES.map((book) => (
-                  <div
-                    key={book.id}
-                    onClick={() => router.push(`/book/${book.gutenbergId || book.id}`)}
-                    className={`w-12 sm:w-14 ${book.height} ${book.bg} rounded-t-sm shadow-md cursor-pointer hover:-translate-y-2 transition-transform duration-200 flex flex-col items-center justify-between py-2.5 px-1 relative group border-t border-x border-white/10`}
-                  >
-                    <span
-                      className={`font-label-sm text-[10px] font-bold ${book.topColor} truncate`}
+            <div className="relative bg-surface-container-lowest/60 border border-outline-variant/30 rounded-2xl p-4 pt-6 shadow-sm backdrop-blur-md overflow-hidden">
+              <div className="flex items-end justify-between sm:justify-around gap-2 sm:gap-3 overflow-x-auto no-scrollbar pt-2 px-1 pb-1 min-h-[265px] sm:min-h-[285px]">
+                {TRENDING_SPINES.map((book) => {
+                  const dims = {
+                    height: book.height || getSpineDimensions(book.title).height,
+                    width: book.width || getSpineDimensions(book.title).width,
+                    fontSize: book.fontSize || getSpineDimensions(book.title).fontSize,
+                    tracking: book.tracking || getSpineDimensions(book.title).tracking,
+                  };
+
+                  return (
+                    <div
+                      key={book.id}
+                      onClick={() => router.push(`/book/${book.gutenbergId || book.id}`)}
+                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-white/20 border-r border-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none`}
                     >
-                      {book.top}
-                    </span>
-                    <span
-                      className={`writing-mode-vertical text-[11px] font-headline-sm font-semibold tracking-wide ${book.titleColor} truncate ${book.maxH}`}
-                    >
-                      {book.title}
-                    </span>
-                    <span className={`text-[9px] font-caption ${book.authorColor} truncate`}>
-                      {book.author}
-                    </span>
-                  </div>
-                ))}
+                      {/* Top Ornament */}
+                      <div className="flex items-center justify-center h-4 w-full shrink-0">
+                        {book.topType === 'icon' ? (
+                          <span className={`material-symbols-outlined text-[12px] sm:text-[13px] ${book.topColor}`}>
+                            {book.top}
+                          </span>
+                        ) : book.topType === 'text-serif' ? (
+                          <span className={`font-serif text-[11px] ${book.topColor} font-bold leading-none`}>
+                            {book.top}
+                          </span>
+                        ) : (
+                          <span className={`font-label-sm text-[9px] sm:text-[9.5px] font-bold ${book.topColor} tracking-widest uppercase leading-none`}>
+                            {book.top}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Spine Title - Centered along vertical spine axis */}
+                      <div className="flex-1 w-full flex items-center justify-center overflow-hidden my-1 z-10">
+                        <span
+                          className={`spine-book ${dims.fontSize} font-headline-sm font-semibold ${dims.tracking} ${book.titleColor} text-center`}
+                        >
+                          {book.title}
+                        </span>
+                      </div>
+
+                      {/* Bottom Author */}
+                      <div className="flex items-center justify-center h-4 w-full shrink-0">
+                        <span className={`text-[8px] sm:text-[8.5px] font-caption ${book.authorColor} tracking-tight truncate max-w-full text-center leading-none`}>
+                          {book.author}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="h-3 w-full bg-gradient-to-b from-[#b89f82] to-[#998166] rounded-sm shadow-inner mt-0.5 border-t border-[#dfcfbd]"></div>
               <div className="h-2 w-full bg-[#75614a]/30 blur-[2px] -mt-1"></div>

@@ -20,7 +20,7 @@ body { background: rgb(var(--c-background)); color: rgb(var(--c-on-surface)); }
 .spine-emboss { text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
 .soft-editorial-shadow { box-shadow: 0 2px 8px rgba(44, 64, 88, 0.04), 0 12px 28px rgba(44, 64, 88, 0.06); }
 .shelf-depth { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(44, 64, 88, 0.05); }
-.spine-book { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); }
+.spine-book { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); display: inline-block; white-space: nowrap; }
 .spine-shadow-left { box-shadow: inset -2px 0 5px rgba(0, 0, 0, 0.45), inset 1px 0 2px rgba(255, 255, 255, 0.1), -3px 4px 10px rgba(0, 0, 0, 0.45); }
 .cover-curve-shadow { box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25); }
 .subtle-paper-border { border: 1px solid rgba(255, 255, 255, 0.08); }
