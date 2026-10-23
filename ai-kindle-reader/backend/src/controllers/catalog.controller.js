@@ -4,7 +4,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { Readable } from "node:stream";
 
 const formatGutendexBooks = (rawData) => {
-  const filteredBooks = rawData.results.filter(
+  const results = rawData.results || []; // ai 
+  const filteredBooks = results.filter(   //ai
     (book) => book.formats?.["application/epub+zip"],
   );
   const books = filteredBooks.map((book) => ({
@@ -14,19 +15,25 @@ const formatGutendexBooks = (rawData) => {
     coverUrl: book.formats?.["image/jpeg"] || null,
     downloadUrl: book.formats?.["application/epub+zip"] || null,
     languages: book.languages || [],
+    subjects: book.subjects || [],  // ai
+    downloadCount: book.download_count ?? null,   //ai
+    copyright: book.copyright ?? null,  //ai
   }));
   return books;
 };
 
 const formatSingleBook = (book) => {
   return {
-  id: book.id,
-  title: book.title,
-  authors: book.authors?.map((a) => a.name) || [],
-  coverUrl: book.formats?.["image/jpeg"] || null,
-  downloadUrl: book.formats?.["application/epub+zip"] || null,
-  languages: book.languages || [],
-};
+    id: book.id,
+    title: book.title,
+    authors: book.authors?.map((a) => a.name) || [],
+    coverUrl: book.formats?.["image/jpeg"] || null,
+    downloadUrl: book.formats?.["application/epub+zip"] || null,
+    languages: book.languages || [],
+    subjects: book.subjects || [],
+    downloadCount: book.download_count ?? null,
+    copyright: book.copyright ?? null,
+  };
 };
 
 export const searchBooks = asyncHandler(async (req, res) => {

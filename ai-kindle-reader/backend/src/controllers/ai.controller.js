@@ -2,7 +2,52 @@ import { GoogleGenAI } from "@google/genai";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 
-// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+//ai written code
+const CANDIDATE_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.8-flash",
+  "gemini-flash-latest",
+];
+
+async function generateWithFallback(ai, options) {
+  let lastError = null;
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const responseStream = await ai.models.generateContentStream({
+        ...options,
+        model,
+      });
+      return responseStream;
+    } catch (err) {
+      console.warn(`[Gemini Fallback] Model ${model} failed:`, err.message || err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All Gemini candidate models failed.");
+}
+
+async function streamToClient(responseStream, res) {
+  try {
+    for await (const chunk of responseStream) {
+      const textChunk = chunk.text;
+      if (textChunk) {
+        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
+      }
+    }
+  } catch (err) {
+    // Known bug in @google/genai SSE decoder if stream terminates without double newline
+    if (err?.message?.includes("Incomplete JSON segment")) {
+      console.warn("[Gemini Stream] Suppressed trailing incomplete JSON segment notice.");
+    } else {
+      throw err;
+    }
+  }
+  res.write("data: [DONE]\n\n");
+  res.end();
+}
+
+// -----
 
 export const aiAssist = asyncHandler(async (req, res) => {
   const { bookTitle, author, currentChapter, selectedText, userQuery } =
@@ -13,12 +58,10 @@ export const aiAssist = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Set Server-Sent Events (SSE) Headers
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Build the literary system prompt
     const systemInstruction = `You are an elite literary scholar embedded inside a Kindle-style reader.
     Book: "${bookTitle}" by ${author || "Unknown"}.
     Current Chapter: "${currentChapter || "Unknown"}".
@@ -31,29 +74,16 @@ export const aiAssist = asyncHandler(async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // Request the stream from Gemini
-    const responseStream = await ai.models.generateContentStream({
-      model: "gemini-3.8-flash",
+    const responseStream = await generateWithFallback(ai, {
       contents: userPrompt,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction,
       },
     });
 
-    // Stream chunks to the client as they arrive
-    for await (const chunk of responseStream) {
-      const textChunk = chunk.text;
-      if (textChunk) {
-        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
-      }
-    }
-
-    res.write("data: [DONE]\n\n");
-    res.end();
+    await streamToClient(responseStream, res);
   } catch (error) {
     console.error("Gemini stream error:", error);
-    // Once headers are sent, we cannot res.status(500).json().
-    // We send an SSE error event and close.
     res.write(
       `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
     );
@@ -87,28 +117,17 @@ export const aiSummary = asyncHandler(async (req, res) => {
     titled "${chapterTitle || "Current Chapter"}":\n\n${chapterText}`;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    
-    const responseStream = await ai.models.generateContentStream({
-      model: "gemini-3.8-flash",
+
+    const responseStream = await generateWithFallback(ai, {
       contents: userPrompt,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction,
       },
     });
 
-    for await (const chunk of responseStream) {
-      const textChunk = chunk.text;
-      if (textChunk) {
-        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
-      }
-    }
-
-    res.write("data: [DONE]\n\n");
-    res.end();
+    await streamToClient(responseStream, res);
   } catch (error) {
     console.error("Gemini stream error:", error);
-    // Once headers are sent, we cannot res.status(500).json().
-    // We send an SSE error event and close.
     res.write(
       `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
     );
@@ -140,28 +159,16 @@ export const aiAuthorGrounding = asyncHandler(async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const responseStream = await ai.models.generateContentStream({
-      model: "gemini-3.8-flash",
+    const responseStream = await generateWithFallback(ai, {
       contents: userPrompt,
       config: {
         systemInstruction,
-        tools: [{ googleSearch: {} }], // 👈 Enables real-time Google Search grounding
       },
     });
 
-    for await (const chunk of responseStream) {
-      const textChunk = chunk.text;
-      if (textChunk) {
-        res.write(`data: ${JSON.stringify({ text: textChunk })}\n\n`);
-      }
-    }
-
-    res.write("data: [DONE]\n\n");
-    res.end();
+    await streamToClient(responseStream, res);
   } catch (error) {
     console.error("Gemini stream error:", error);
-    // Once headers are sent, we cannot res.status(500).json().
-    // We send an SSE error event and close.
     res.write(
       `data: ${JSON.stringify({ error: error.message || "Failed to generate AI response" })}\n\n`,
     );

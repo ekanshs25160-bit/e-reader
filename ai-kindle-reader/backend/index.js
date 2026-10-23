@@ -1,10 +1,14 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
-dotenv.config({ path: "./.env.local" });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, ".env.local") });
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
-// import express from "express";
-import app from './app.js'
+import app from "./app.js";
 const port = process.env.PORT || 8000;
 
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`)}) 
+  console.log(`Server is running on port ${port}`);
+});

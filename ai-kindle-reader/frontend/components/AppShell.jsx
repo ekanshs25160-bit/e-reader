@@ -21,7 +21,7 @@ function isActive(pathname, href) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
-  const { isNight, toggleDayNight, userName } = useTheme();
+  const { isNight, toggleDayNight, userName, userAvatar } = useTheme();
 
   return (
     <div className={`min-h-dvh ${isNight ? 'dark bg-[#141824] text-[#F3F1EC]' : 'bg-background text-on-surface'}`}>
@@ -94,12 +94,16 @@ export default function AppShell({ children }) {
             href="/settings"
             className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-opacity"
           >
-            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-black/10 shadow-xs shrink-0">
-              <img
-                alt="Flyleaf profile reader"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida/AEtjO1UM82GOerrlrIjTHN3MQ0coHeRBhe1Xnxz6SbqF7RFCOrdzEQrw0OascZ9JCl8ESF16dK7SzVI6RfEoiagVAts-TGRT__BTx4cJzDY37szTssh_N_uopDZCcPTnF7UI_ErGXSGpdyvq6BPsvEv3-HA76moihGHwcapgFent3mVDcOt_LNSzeY3cb7ws7pqgw8No44XAT4hsjDwFGXIKHm2okxv1coDeJcX-qt1IDWHsQtGkcpWXxcy4XA"
-              />
+            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30 shadow-xs shrink-0 bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
+              {userAvatar ? (
+                <img
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                  src={userAvatar}
+                />
+              ) : (
+                <span>{(userName || 'R').slice(0, 2).toUpperCase()}</span>
+              )}
             </div>
             <div className="hidden lg:flex flex-col min-w-0">
               <span className={`font-body-ui-bold text-[13px] truncate ${isNight ? 'text-[#F3F1EC]' : 'text-primary'}`}>
