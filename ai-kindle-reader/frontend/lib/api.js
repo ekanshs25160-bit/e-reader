@@ -1,12 +1,16 @@
 // The only module in the frontend that talks to the Express backend.
 // Every other file must import from here instead of calling fetch() against the API directly.
 
-const rawBase = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
-)
-  .trim() // Removes any hidden newline (\n) or space from Render Env Vars
-  .replace(/^https?:\/(?!\/)/i, (match) => `${match}/`) // Fixes accidental single-slash https:/ typos
-  .replace(/\/+$/, "");
+const isBrowser = typeof window !== "undefined";
+
+const rawBase = isBrowser
+  ? "/api" // In the browser, always use same-origin /api (proxied by next.config.mjs — zero CORS!)
+  : (
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://e-reader-backend-46oy.onrender.com/api"
+    )
+      .trim()
+      .replace(/\/+$/, "");
 
 export const API_BASE_URL = rawBase.endsWith("/api") ? rawBase : `${rawBase}/api`;
 

@@ -15,6 +15,27 @@ const nextConfig = {
     };
     return config;
   },
+  async rewrites() {
+    const rawBackend = (
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://e-reader-backend-46oy.onrender.com"
+    )
+      .trim()
+      .replace(/\/api\/?$/, "")
+      .replace(/\/+$/, "");
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${rawBackend}/api/:path*`,
+      },
+      {
+        source: "/health",
+        destination: `${rawBackend}/health`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

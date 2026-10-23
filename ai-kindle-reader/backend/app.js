@@ -30,6 +30,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/health", healthRouter);
+app.use("/api/health", healthRouter);
 app.use("/api/catalog", catalogRouter);
 app.use('/api/lookup',lookupRouter)
 app.use('/api/ai', aiRouter)
