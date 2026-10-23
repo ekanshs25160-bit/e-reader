@@ -1,7 +1,55 @@
 // The only module in the frontend that talks to the Express backend.
 // Every other file must import from here instead of calling fetch() against the API directly.
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// Base host without trailing /api for backward compatibility
+export const API_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
+
+// Resolves backend URLs whether the endpoint starts with /api or not,
+// and whether API_BASE_URL ends with /api or not.
+export function resolveApiUrl(baseUrl, endpoint) {
+  const base = (baseUrl || '').replace(/\/+$/, '');
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const hasApiInBase = base.endsWith('/api');
+  const rootBase = hasApiInBase ? base.slice(0, -4) : base;
+
+  if (path.startsWith('/api/')) {
+    return `${rootBase}${path}`;
+  } else if (path === '/health' || path.startsWith('/health?') || path.startsWith('/health/')) {
+    return `${rootBase}${path}`;
+  } else {
+    return `${rootBase}/api${path}`;
+  }
+}
+
+export async function fetchFromApi(endpoint, options = {}) {
+  const url = resolveApiUrl(API_BASE_URL, endpoint);
+
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers: defaultHeaders,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `API error: ${response.statusText}`);
+  }
+
+  // Handle JSON vs binary responses (like EPUB files)
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  }
+  return response.blob();
+}
 
 export class ApiError extends Error {
   constructor(message, status = 0) {
@@ -27,11 +75,12 @@ function buildQuery(params = {}) {
 // fetch() against the backend; network-level failures become ApiError(status 0).
 // AbortError is re-thrown untouched so callers can tell a cancel from a failure.
 async function backendFetch(path, init) {
+  const url = resolveApiUrl(API_BASE_URL, path);
   try {
-    return await fetch(`${API_BASE}${path}`, init);
+    return await fetch(url, init);
   } catch (err) {
     if (isAbortError(err)) throw err;
-    throw new ApiError(`Backend unreachable at ${API_BASE}`, 0);
+    throw new ApiError(`Backend unreachable at ${url}`, 0);
   }
 }
 
