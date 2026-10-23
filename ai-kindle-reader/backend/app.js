@@ -7,23 +7,25 @@ import aiRouter from './src/routes/ai.routes.js'
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3000', // Local Next.js development
-  'https://e-reader-jj18.onrender.com', // Your live Render frontend URL (replace with your actual frontend URL)
-];
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://e-reader-jj18.onrender.com",
+  ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true, // Allow cookies/authorization headers if needed
-}));
+  if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".onrender.com")) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
