@@ -9,7 +9,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000', // Local Next.js development
-  'https://e-reader-backend-46oy.onrender.com', // Your live Render frontend URL (replace with your actual frontend URL)
+  'https://e-reader-jj18.onrender.com', // Your live Render frontend URL (replace with your actual frontend URL)
 ];
 
 app.use(cors({
