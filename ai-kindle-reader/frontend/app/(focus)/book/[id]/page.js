@@ -88,6 +88,12 @@ function toAuthors(src) {
 }
 
 export default function BookDetailPage() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const params = useParams();
   const router = useRouter();
   const { showToast } = useTheme();
@@ -319,6 +325,10 @@ export default function BookDetailPage() {
       {inner}
     </div>
   );
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
 
   if (loading) {
     return shell(

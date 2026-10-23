@@ -55,6 +55,12 @@ async function validateEpubBlob(blob) {
 }
 
 function ReaderContent() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -522,6 +528,11 @@ function ReaderContent() {
     setShowHud((prev) => !prev);
   }, [activeOverlay, selectedData]);
 
+  // Prevent hydration mismatch between server HTML and local IndexedDB/browser state
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
+
   // Loading state while querying IndexedDB
   if (loadingDb) {
     return (
@@ -719,7 +730,7 @@ function ReaderContent() {
                     {wordMeaning?.word || selectedData.text}
                   </span>
                   {wordMeaning?.phonetic && (
-                    <span className="font-label-sm text-caption text-on-surface-variant font-mono">
+                    <span className="text-caption text-on-surface-variant font-mono">
                       {wordMeaning.phonetic}
                     </span>
                   )}
@@ -1162,6 +1173,16 @@ function ReaderContent() {
 }
 
 export default function ReaderPage() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="w-full h-dvh bg-background" />;
+  }
+
   return (
     <Suspense
       fallback={
