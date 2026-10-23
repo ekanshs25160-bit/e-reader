@@ -92,33 +92,52 @@ export const searchBooks = asyncHandler(async (req, res) => {
 });
 
 export const downloadBook = asyncHandler(async (req, res) => {
-  const { bookId } = req.params;
-  if (!bookId) {
+  const rawId = req.params.bookId;
+  const cleanId = String(rawId || "").replace(/^gutenberg_/, "").trim();
+  if (!cleanId) {
     return res.status(400).json(new ApiError(400, "Book ID is not provided"));
   }
 
-  const response = await fetch(
-    `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-    {
-      headers: {
-        Accept: "application/epub+zip",
-        "User-Agent": "KindleReader/1.0 (Educational Project)",
-      },
-    },
-  );
+  // Potential Gutenberg download endpoints in order of preference
+  const candidateUrls = [
+    `https://www.gutenberg.org/ebooks/${cleanId}.epub3.images`,
+    `https://www.gutenberg.org/ebooks/${cleanId}.epub.images`,
+    `https://www.gutenberg.org/cache/epub/${cleanId}/pg${cleanId}-images-3.epub`,
+    `https://www.gutenberg.org/cache/epub/${cleanId}/pg${cleanId}.epub`,
+    `https://www.gutenberg.org/ebooks/${cleanId}.epub.noimages`,
+  ];
 
-  if (!response.ok) {
+  let successResponse = null;
+  for (const url of candidateUrls) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          Accept: "application/epub+zip",
+          "User-Agent": "KindleReader/1.0 (Educational Project)",
+        },
+        redirect: "follow",
+      });
+      if (resp.ok) {
+        successResponse = resp;
+        break;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  if (!successResponse) {
     throw new ApiError(
-      response.status,
-      `Book ${bookId} not found on Gutenberg`,
+      404,
+      `Book ${cleanId} not found on Gutenberg`,
     );
   }
 
-  //tell our client's browser what it is receiving
+  // Tell our client's browser what it is receiving
   res.setHeader("Content-Type", "application/epub+zip");
-  res.setHeader("Content-Disposition", `attachment; filename="${bookId}.epub"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${cleanId}.epub"`);
 
-  Readable.fromWeb(response.body).pipe(res);
+  Readable.fromWeb(successResponse.body).pipe(res);
 });
 
 export const browseCatalog = asyncHandler(async (req, res) => {
@@ -165,9 +184,18 @@ export const browseCatalog = asyncHandler(async (req, res) => {
 });
 
 export const getBookById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const cleanId = String(rawId || "").replace(/^gutenberg_/, "").trim();
+  if (!cleanId) {
+    return res.status(400).json(new ApiError(400, "Book ID is not provided"));
+  }
 
-  const response = await fetch(`https://gutendex.com/books/${id}`);
+  const response = await fetch(`https://gutendex.com/books/${encodeURIComponent(cleanId)}`, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "KindleReader/1.0 (Educational Project)",
+    },
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -179,10 +207,6 @@ export const getBookById = asyncHandler(async (req, res) => {
   }
 
   const rawData = await response.json();
-
   const book = formatSingleBook(rawData);
-
-  const payload = book
-
-  return res.status(200).json(new ApiResponse(200,payload,'Here is your book...'))
+  return res.status(200).json(new ApiResponse(200, book, "Here is your book..."));
 });

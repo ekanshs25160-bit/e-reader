@@ -321,7 +321,8 @@ export const lookupWord = async (word, { signal } = {}) => {
 };
 
 export async function downloadEpub(id) {
-  const res = await backendFetch(`/api/catalog/download/${encodeURIComponent(id)}`);
+  const cleanId = String(id || "").replace(/^gutenberg_/, "").trim();
+  const res = await backendFetch(`/api/catalog/download/${encodeURIComponent(cleanId)}`);
   if (!res.ok) throw await errorFromResponse(res);
 
   let blob;
