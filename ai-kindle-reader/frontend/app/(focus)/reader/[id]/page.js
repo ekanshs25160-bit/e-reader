@@ -700,7 +700,22 @@ function ReaderContent() {
       setSelectedData(null);
       return;
     }
-    setShowHud((prev) => !prev);
+    setShowHud((prev) => {
+      const next = !prev;
+      clearTimeout(hudIdleTimerRef.current);
+      if (next) {
+        const isPhoneOrTouch =
+          typeof window !== "undefined" &&
+          (window.innerWidth < 768 || "ontouchstart" in window);
+        const hideDelay = isPhoneOrTouch ? 4000 : 2500;
+        hudIdleTimerRef.current = setTimeout(() => {
+          if (activeOverlayRef.current === "none") {
+            setShowHud(false);
+          }
+        }, hideDelay);
+      }
+      return next;
+    });
   }, [activeOverlay, selectedData]);
 
   const handleDeleteHighlight = useCallback(async (highlightId) => {
@@ -1035,12 +1050,12 @@ function ReaderContent() {
 
   const readingAreaClass = (() => {
     if (isSettingsOpen) {
-      return "max-md:h-[42dvh] md:mr-[380px] md:w-[calc(100vw-380px)] h-dvh";
+      return "w-full md:mr-[380px] md:w-[calc(100vw-380px)] h-full";
     }
     if (isAiOpen) {
-      return "max-md:h-[52dvh] md:mr-[420px] md:w-[calc(100vw-420px)] h-dvh";
+      return "w-full md:mr-[420px] md:w-[calc(100vw-420px)] h-full";
     }
-    return "w-full h-dvh";
+    return "w-full h-full";
   })();
 
   const headerBarClass = (() => {
@@ -1104,7 +1119,7 @@ function ReaderContent() {
   };
 
   return (
-    <div style={readerRootStyle} className="relative w-full h-dvh overflow-hidden select-none">
+    <div style={readerRootStyle} className="relative w-full h-full overflow-hidden select-none">
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -1119,8 +1134,8 @@ function ReaderContent() {
         </div>
       )}
 
-      {/* Active Reading Area: Live reflow viewport. Shrinks above bottom sheet on phone, shrinks side-by-side with docked panels on desktop */}
-      <div className={`relative transition-all duration-300 flex flex-col ${readingAreaClass}`}>
+      {/* Active Reading Area: Live reflow viewport */}
+      <div className={`relative transition-all duration-300 flex flex-col w-full h-full ${readingAreaClass}`}>
         {/* Top progress capsule visible when controls are hidden */}
         {!showHud && activeOverlay === "none" && !selectedData && (
           <div
@@ -1130,16 +1145,17 @@ function ReaderContent() {
             aria-valuemax={100}
             aria-label={`Reading progress: ${pct}%`}
             style={{
+              top: "max(8px, env(safe-area-inset-top, 8px))",
               backgroundColor: "var(--reader-bg)",
               borderColor: "var(--reader-border)",
             }}
-            className="fixed top-2 left-1/2 -translate-x-1/2 z-30 max-w-[68ch] w-[92vw] h-[6px] rounded-full p-[1px] backdrop-blur-sm border pointer-events-none transition-all duration-300 shadow-xs"
+            className="fixed left-1/2 -translate-x-1/2 z-30 max-w-[68ch] w-[90vw] sm:w-[92vw] h-1 rounded-full p-[1px] backdrop-blur-sm border pointer-events-none transition-all duration-300 shadow-xs"
           >
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
                 backgroundColor: "var(--reader-accent)",
-                width: `${Math.max(2, Math.min(100, pct))}%`,
+                width: `${Math.max(0, Math.min(100, pct))}%`,
               }}
             />
           </div>
@@ -1186,7 +1202,7 @@ function ReaderContent() {
                 color: activeOverlay === "contents" ? "var(--reader-accent)" : "var(--reader-fg)",
                 backgroundColor: activeOverlay === "contents" ? "var(--reader-accent-alpha, rgba(133,82,36,0.12))" : "transparent",
               }}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+              className="hidden lg:flex w-10 h-10 rounded-full items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[20px]" data-icon="menu_book">
                 menu_book
@@ -1203,7 +1219,7 @@ function ReaderContent() {
                 color: activeOverlay === "highlights" ? "var(--reader-accent)" : "var(--reader-fg)",
                 backgroundColor: activeOverlay === "highlights" ? "var(--reader-accent-alpha, rgba(133,82,36,0.12))" : "transparent",
               }}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+              className="hidden lg:flex w-10 h-10 rounded-full items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[20px]" data-icon="rate_review">
                 rate_review
@@ -1212,7 +1228,7 @@ function ReaderContent() {
           </div>
 
           {/* Title / Brand Pill with Chapter Subtitle */}
-          <div className="flex flex-col items-center justify-center max-w-[45vw] sm:max-w-md min-w-0">
+          <div className="flex flex-col items-center justify-center max-w-[50vw] sm:max-w-md min-w-0">
             <div
               style={{
                 backgroundColor: "var(--reader-bg)",
@@ -1238,9 +1254,15 @@ function ReaderContent() {
                 </>
               )}
             </div>
+            <span
+              style={{ color: "var(--reader-muted)" }}
+              className="font-label-sm text-[10px] tracking-wide mt-0.5 truncate"
+            >
+              {`Chapter ${pageInfo.current} / ${pageInfo.total}`}
+            </span>
           </div>
 
-          {/* Trailing Actions: Search (disabled) + Appearance + Bookmark + Fullscreen */}
+          {/* Trailing Actions: Search (desktop) + Bookmark + Appearance + Fullscreen (desktop) */}
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
@@ -1248,25 +1270,11 @@ function ReaderContent() {
               aria-label="Search"
               title="Search (Coming soon)"
               style={{ color: "var(--reader-fg)" }}
-              className="w-10 h-10 rounded-full flex items-center justify-center opacity-40 cursor-not-allowed select-none"
+              className="hidden lg:flex w-10 h-10 rounded-full items-center justify-center opacity-40 cursor-not-allowed select-none"
             >
               <span className="material-symbols-outlined text-[20px]" data-icon="search">
                 search
               </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveOverlay((prev) => (prev === "settings" ? "none" : "settings"))}
-              aria-label="Appearance settings (A)"
-              title="Appearance settings (A)"
-              style={{
-                color: activeOverlay === "settings" ? "var(--reader-accent)" : "var(--reader-fg)",
-                backgroundColor: activeOverlay === "settings" ? "var(--reader-accent-alpha, rgba(133,82,36,0.12))" : "transparent",
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-            >
-              <span style={{ color: "var(--reader-fg)" }} className="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
             </button>
 
             <button
@@ -1293,11 +1301,25 @@ function ReaderContent() {
 
             <button
               type="button"
+              onClick={() => setActiveOverlay((prev) => (prev === "settings" ? "none" : "settings"))}
+              aria-label="Appearance settings (A)"
+              title="Appearance settings (A)"
+              style={{
+                color: activeOverlay === "settings" ? "var(--reader-accent)" : "var(--reader-fg)",
+                backgroundColor: activeOverlay === "settings" ? "var(--reader-accent-alpha, rgba(133,82,36,0.12))" : "transparent",
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            >
+              <span style={{ color: "var(--reader-fg)" }} className="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleToggleFullscreen}
               aria-label={isFullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
               title={isFullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
               style={{ color: "var(--reader-fg)" }}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+              className="hidden lg:flex w-10 h-10 rounded-full items-center justify-center hover:opacity-80 active:scale-95 transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[20px]" data-icon={isFullscreen ? "fullscreen_exit" : "fullscreen"}>
                 {isFullscreen ? "fullscreen_exit" : "fullscreen"}
@@ -1415,18 +1437,12 @@ function ReaderContent() {
         />
 
       {/* Reading Progress Subtle Indicator Bar matching designs/03-reader-viewport.html */}
-      {activeOverlay === "none" && !selectedData && (
+      {showHud && activeOverlay === "none" && !selectedData && (
         <div
           aria-label={`${minutesLeftInChapter} minutes left in ${chapterDisplayName}`}
           style={{ color: "var(--reader-muted)" }}
           className={`fixed left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center justify-center space-y-1 text-center transition-all duration-300 w-[92vw] max-w-xs ${
-            showHud
-              ? isShortLandscape
-                ? "bottom-12"
-                : "bottom-18"
-              : isShortLandscape
-              ? "bottom-1.5"
-              : "bottom-3"
+            isShortLandscape ? "bottom-12" : "bottom-18"
           }`}
         >
           <div
@@ -1470,7 +1486,7 @@ function ReaderContent() {
           >
             arrow_forward
           </span>
-          <span>End of chapter · swipe or press → to continue</span>
+          <span>End of chapter · swipe to continue</span>
         </div>
       )}
 
