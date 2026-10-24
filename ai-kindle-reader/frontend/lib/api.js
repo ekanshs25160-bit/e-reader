@@ -222,53 +222,10 @@ export const getCatalogBook = async (id) => {
   }
 };
 
-// ---- Dictionary lookup (Free Dictionary API, direct from client) ----
-// Resolves to a normalized object that existing callers already consume:
+// ---- Dictionary lookup (Next.js server-to-server proxy) ----
+// Resolves to a normalized object that existing callers consume:
 //   { word, phonetic, audio, partsOfSpeech: string[], definition: string[], entries: <raw API array> }
-// `definition` is [] when nothing is found, so the UI can show "ask AI" instead of crashing.
-// `entries` keeps the raw dictionaryapi.dev array for UIs that want meanings/phonetics.
-const DICT_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
-const DICT_TIMEOUT_MS = 6000;
 const dictCache = new Map();
-
-// Fetch with timeout; honours an optional caller AbortSignal.
-async function fetchWithTimeout(url, { signal, timeout = DICT_TIMEOUT_MS } = {}) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeout);
-  const onAbort = () => ctrl.abort();
-  signal?.addEventListener?.("abort", onAbort);
-  try {
-    return await fetch(url, { signal: ctrl.signal });
-  } finally {
-    clearTimeout(timer);
-    signal?.removeEventListener?.("abort", onAbort);
-  }
-}
-
-// Returns raw entries array, null if the word does not exist (404),
-// or throws on network / rate-limit / server errors (so caller can fall back).
-async function fetchDictionaryEntries(term, signal) {
-  let lastErr;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetchWithTimeout(`${DICT_URL}${encodeURIComponent(term)}`, { signal });
-      if (res.status === 404) return null;
-      if (res.status === 429 || res.status >= 500) {
-        lastErr = new ApiError(`Dictionary busy (${res.status})`, res.status);
-      } else if (!res.ok) {
-        throw new ApiError("Dictionary request failed", res.status);
-      } else {
-        const data = await res.json();
-        return Array.isArray(data) && data.length > 0 ? data : null;
-      }
-    } catch (err) {
-      if (signal?.aborted) throw err; // caller cancelled — don't retry
-      lastErr = err;
-    }
-    if (attempt === 0) await wait(400);
-  }
-  throw lastErr || new ApiError("Dictionary unavailable", 0);
-}
 
 function normalizeDictionaryEntries(entries, fallbackWord) {
   const first = entries?.[0] || {};
@@ -302,58 +259,35 @@ function normalizeDictionaryEntries(entries, fallbackWord) {
   };
 }
 
-// Simple inflection candidates ("walked" -> "walk", "boxes" -> "box") for 404 retries.
-function stemCandidates(w) {
-  const out = [];
-  if (w.length > 4 && w.endsWith("ies")) out.push(`${w.slice(0, -3)}y`);
-  if (w.length > 3 && w.endsWith("es")) out.push(w.slice(0, -2));
-  if (w.length > 3 && w.endsWith("s")) out.push(w.slice(0, -1));
-  if (w.length > 4 && w.endsWith("ed")) out.push(w.slice(0, -2), w.slice(0, -1));
-  if (w.length > 5 && w.endsWith("ing")) out.push(w.slice(0, -3), `${w.slice(0, -3)}e`);
-  return [...new Set(out)];
-}
-
-export const lookupWord = async (word, { signal } = {}) => {
+export const lookupWord = async (word) => {
   const clean = String(word || "")
     .trim()
-    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    .replace(/^[^a-zA-Z0-9-]+|[^a-zA-Z0-9-]+$/g, "")
     .toLowerCase();
 
   const empty = (w) => ({ word: w, phonetic: "", audio: "", partsOfSpeech: [], definition: [], entries: [] });
 
-  if (!clean || /\s/.test(clean) && clean.split(/\s+/).length > 3) return empty(clean);
+  if (!clean || (/\s/.test(clean) && clean.split(/\s+/).length > 3)) return empty(clean);
 
   // Dictionary only handles single headwords; use first token for short phrases.
   const term = clean.split(/\s+/)[0];
 
   if (dictCache.has(term)) return dictCache.get(term);
 
-  let result = null;
   try {
-    let entries = await fetchDictionaryEntries(term, signal);
-    if (!entries) {
-      for (const stem of stemCandidates(term)) {
-        entries = await fetchDictionaryEntries(stem, signal);
-        if (entries) break;
-      }
+    const data = await apiGet(`/api/lookup/define?word=${encodeURIComponent(term)}`);
+    let result;
+    if (Array.isArray(data) && data.length > 0) {
+      result = normalizeDictionaryEntries(data, term);
+    } else if (data && Array.isArray(data.definition) && data.definition.length > 0) {
+      result = { ...empty(term), ...data, entries: data.entries || [] };
+    } else {
+      result = empty(term);
     }
-    result = entries ? normalizeDictionaryEntries(entries, term) : empty(term);
-    dictCache.set(term, result); // cache hits and confirmed misses
+    dictCache.set(term, result);
     return result;
   } catch (err) {
-    if (isAbortError(err) || signal?.aborted) throw err;
-    // Direct call failed (CORS / rate limit / offline): try our backend proxy.
-    try {
-      const data = await apiGet(`/api/lookup/define${buildQuery({ word: term })}`);
-      if (data && Array.isArray(data.definition) && data.definition.length > 0) {
-        result = { ...empty(term), ...data, entries: data.entries || [] };
-        dictCache.set(term, result);
-        return result;
-      }
-    } catch {
-      // fall through to graceful empty result
-    }
-    return empty(term); // not cached, so a later retry can succeed
+    return empty(term);
   }
 };
 

@@ -6,6 +6,7 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['localforage'],
+    proxyTimeout: 120000, // Allow 120s for Render Free-tier backend cold starts & AI streams
   },
   webpack: (config) => {
     config.resolve.fallback = {
