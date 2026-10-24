@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -79,7 +79,7 @@ function BookCoverItem({ book, aspect = 'aspect-[2/3]' }) {
         </span>
       </div>
       <div className="text-center z-10 px-0.5 my-auto">
-        <h4 className="font-headline-md text-[12px] leading-tight font-serif font-medium line-clamp-3">
+        <h4 className="font-headline-md text-[12px] leading-tight font-medium line-clamp-3">
           {book.title}
         </h4>
         <p
@@ -170,45 +170,41 @@ export default function Page() {
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'progress'
   const [booksList, setBooksList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [bookToDelete, setBookToDelete] = useState(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function fetchVaultBooks() {
-      setLoading(true);
-      try {
-        const vaultBooks = await getAllBooks();
-        if (active) {
-          const loaded = (vaultBooks || []).map((b) => {
-            const pct =
-              b.progressPercentage !== undefined
-                ? b.progressPercentage
-                : b.progress !== undefined
-                ? b.progress
-                : 0;
-            return {
-              ...b,
-              progressPercentage: pct,
-              status:
-                b.status || (pct >= 100 ? 'finished' : pct > 0 ? 'reading' : 'to-read'),
-              hasBinary: Boolean(b.hasBinary),
-            };
-          });
-          setBooksList(loaded);
-        }
-      } catch (err) {
-        console.warn('Failed to load books from vault:', err);
-      } finally {
-        if (active) setLoading(false);
-      }
+  const fetchVaultBooks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const vaultBooks = await getAllBooks();
+      const loaded = (vaultBooks || []).map((b) => {
+        const pct =
+          b.progressPercentage !== undefined
+            ? b.progressPercentage
+            : b.progress !== undefined
+            ? b.progress
+            : 0;
+        return {
+          ...b,
+          progressPercentage: pct,
+          status:
+            b.status || (pct >= 100 ? 'finished' : pct > 0 ? 'reading' : 'to-read'),
+          hasBinary: Boolean(b.hasBinary),
+        };
+      });
+      setBooksList(loaded);
+    } catch (err) {
+      console.warn('Failed to load books from vault:', err);
+      setError(err?.message || 'Failed to load books from your vault');
+    } finally {
+      setLoading(false);
     }
-
-    fetchVaultBooks();
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    fetchVaultBooks();
+  }, [fetchVaultBooks]);
 
   // Real Counts for Filter Tabs
   const counts = useMemo(() => {
@@ -328,19 +324,21 @@ export default function Page() {
               <button
                 type="button"
                 onClick={() => setViewMode('spine')}
-                className={`w-7 h-7 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                aria-label="Spine Shelf View"
+                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
                   viewMode === 'spine'
                     ? 'bg-primary text-on-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 title="Spine Shelf View"
               >
-                <span className="material-symbols-outlined text-[17px]">view_column</span>
+                <span className="material-symbols-outlined text-[18px]">view_column</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`w-7 h-7 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                aria-label="Cover Grid View"
+                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
                   viewMode === 'grid'
                     ? 'bg-primary text-on-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -348,7 +346,7 @@ export default function Page() {
                 title="Cover Grid View"
               >
                 <span
-                  className="material-symbols-outlined text-[16px]"
+                  className="material-symbols-outlined text-[17px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   grid_view
@@ -357,14 +355,15 @@ export default function Page() {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`w-7 h-7 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                aria-label="Compact List View"
+                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
                   viewMode === 'list'
                     ? 'bg-primary text-on-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 title="Compact List View"
               >
-                <span className="material-symbols-outlined text-[17px]">
+                <span className="material-symbols-outlined text-[18px]">
                   format_list_bulleted
                 </span>
               </button>
@@ -382,7 +381,7 @@ export default function Page() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border rounded-xl font-body-ui text-label-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-surface-tint focus:border-surface-tint transition-all shadow-sm"
+                className="w-full pl-9 pr-3 py-2 bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border rounded-xl font-body-ui text-label-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-surface-tint focus:border-surface-tint transition-all shadow-sm min-h-[44px]"
                 placeholder="Search title or author..."
                 type="text"
               />
@@ -390,7 +389,8 @@ export default function Page() {
             <button
               type="button"
               onClick={cycleSort}
-              className="relative w-9 h-9 rounded-xl bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-95 shadow-sm transition-all"
+              aria-label={`Sort by ${sortBy}`}
+              className="relative min-w-[44px] min-h-[44px] rounded-xl bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-95 shadow-sm transition-all"
               title={`Sort by ${sortBy}`}
             >
               <span className="material-symbols-outlined text-[19px]">swap_vert</span>
@@ -398,8 +398,8 @@ export default function Page() {
           </div>
         </section>
 
-        {/* Shelf Spines (Generated from all stored books) */}
-        {booksList.length > 0 && viewMode !== 'list' && (
+        {/* Shelf Spines (Generated from all stored books, or skeleton while loading) */}
+        {viewMode !== 'list' && (loading || booksList.length > 0) && (
           <section className="relative z-10 mt-2 px-5 md:px-8">
             <div className="flex justify-between items-baseline mb-2.5">
               <div className="flex items-center space-x-1.5">
@@ -414,7 +414,8 @@ export default function Page() {
               <button
                 type="button"
                 onClick={cycleSort}
-                className="text-caption font-body-ui-bold text-on-surface-variant hover:text-primary transition-colors flex items-center space-x-0.5"
+                aria-label="Arrange books on shelf"
+                className="text-caption font-body-ui-bold text-on-surface-variant hover:text-primary transition-colors flex items-center space-x-0.5 min-h-[44px] -my-2 px-2"
               >
                 <span>Arrange</span>
                 <span className="material-symbols-outlined text-[14px]">tune</span>
@@ -424,9 +425,19 @@ export default function Page() {
             <div className="relative bg-surface-container-low/70 rounded-2xl p-3 pb-0 subtle-paper-border shadow-sm overflow-hidden backdrop-blur-sm">
               <div className="absolute inset-0 bg-gradient-to-b from-white/40 dark:from-white/[0.04] to-transparent pointer-events-none"></div>
               <div className="flex items-end justify-start space-x-2 overflow-x-auto no-scrollbar pt-2 pb-1 relative z-10 px-1">
-                {booksList.map((book) => (
-                  <ShelfSpine key={book.id} book={book} />
-                ))}
+                {loading ? (
+                  [165, 185, 150, 195, 175, 160].map((h, idx) => (
+                    <div
+                      key={idx}
+                      style={{ height: `${h}px` }}
+                      className="flex-shrink-0 w-11 rounded-t-[4px] bg-surface-container-high/60 animate-pulse border-l border-white/10"
+                    />
+                  ))
+                ) : (
+                  booksList.map((book) => (
+                    <ShelfSpine key={book.id} book={book} />
+                  ))
+                )}
               </div>
               {/* Shelf wooden ledge */}
               <div className="h-3.5 -mx-3 bg-gradient-to-r from-[#d8cebe] via-[#e5dccf] to-[#d8cebe] dark:from-[#262F42] dark:via-[#2F3A52] dark:to-[#222B3C] border-t border-[#c5baaa] dark:border-white/10 flex items-center px-4 shadow-sm">
@@ -461,7 +472,7 @@ export default function Page() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`px-3 py-1 rounded-full text-caption active:scale-95 transition-all shrink-0 ${
+                  className={`min-h-[38px] px-3.5 py-1.5 rounded-full text-caption active:scale-95 transition-all shrink-0 flex items-center justify-center ${
                     activeFilter === tab.id
                       ? 'font-body-ui-bold bg-primary text-on-primary shadow-sm'
                       : 'font-body-ui text-on-surface-variant bg-surface-container-lowest/90 subtle-paper-border hover:bg-surface-container'
@@ -476,7 +487,7 @@ export default function Page() {
           {/* Loading Skeleton */}
           {loading && (
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 md:gap-x-5 gap-y-5 md:gap-y-7 animate-pulse">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
                 <div key={i} className="flex flex-col space-y-2">
                   <div className="aspect-[2/3] w-full rounded-md bg-surface-container-high" />
                   <div className="h-3 w-3/4 bg-surface-container-high rounded" />
@@ -486,8 +497,31 @@ export default function Page() {
             </div>
           )}
 
+          {/* Error State */}
+          {!loading && error && (
+            <div className="bg-surface-container-lowest/95 backdrop-blur-sm border border-error/20 rounded-[24px] p-8 text-center shadow-xs flex flex-col items-center justify-center my-8 max-w-md mx-auto">
+              <div className="w-14 h-14 rounded-full bg-error-container/40 text-error flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[28px]">error</span>
+              </div>
+              <h3 className="font-headline-sm text-headline-sm text-primary font-medium mb-1">
+                Unable to load library
+              </h3>
+              <p className="font-body-ui text-caption text-on-surface-variant max-w-sm mb-6 leading-relaxed">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={fetchVaultBooks}
+                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-on-primary font-body-ui font-medium text-sm flex items-center gap-2 shadow-xs hover:opacity-95 active:scale-[0.98] transition"
+              >
+                <span className="material-symbols-outlined text-[18px]">refresh</span>
+                <span>Retry</span>
+              </button>
+            </div>
+          )}
+
           {/* Empty State when Library is empty */}
-          {!loading && booksList.length === 0 && (
+          {!loading && !error && booksList.length === 0 && (
             <div className="bg-surface-container-lowest/90 backdrop-blur-sm border border-black/[0.06] rounded-[24px] p-8 md:p-12 text-center shadow-xs flex flex-col items-center justify-center my-8">
               <div className="w-16 h-16 rounded-full bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-[32px]">local_library</span>
@@ -501,7 +535,7 @@ export default function Page() {
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Link
                   href="/browse"
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md font-medium hover:opacity-90 active:scale-95 transition shadow-sm flex items-center justify-center gap-2"
+                  className="min-h-[44px] w-full sm:w-auto px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md font-medium hover:opacity-90 active:scale-95 transition shadow-sm flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[18px]">explore</span>
                   <span>Browse The Commons</span>
@@ -509,7 +543,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={openImportModal}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-surface-container border border-outline-variant/30 text-on-surface hover:bg-surface-container-high active:scale-95 transition text-label-md font-medium flex items-center justify-center gap-2"
+                  className="min-h-[44px] w-full sm:w-auto px-5 py-2.5 rounded-full bg-surface-container border border-outline-variant/30 text-on-surface hover:bg-surface-container-high active:scale-95 transition text-label-md font-medium flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[18px]">upload_file</span>
                   <span>Import EPUB</span>

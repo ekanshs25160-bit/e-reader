@@ -113,6 +113,22 @@ export async function saveReaderSettings(settings) {
   });
 }
 
+export async function saveSettings(settings) {
+  const bridge = await getDbBridge();
+  if (bridge?.saveSettings) {
+    return bridge.saveSettings(settings);
+  }
+  return saveReaderSettings(settings);
+}
+
+export async function getSettings() {
+  const bridge = await getDbBridge();
+  if (bridge?.getSettings) {
+    return bridge.getSettings();
+  }
+  return null;
+}
+
 export async function saveReadingLocation(bookId, cfiString, percentage, chapterTitle, currentPage, totalPages) {
   const bridge = await getDbBridge();
   if (bridge?.saveReadingLocation) {

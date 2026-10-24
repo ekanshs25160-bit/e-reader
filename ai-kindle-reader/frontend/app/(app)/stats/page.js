@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getStatsSummary, getAllBooks } from '@/utils/db';
@@ -34,46 +34,42 @@ export default function Page() {
   const [stats, setStats] = useState(null);
   const [booksMap, setBooksMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadStats = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [summary, storedBooks] = await Promise.all([
+        getStatsSummary(),
+        getAllBooks(),
+      ]);
+
+      // Build book lookup dictionary from stored library books
+      const map = {};
+      if (Array.isArray(storedBooks)) {
+        storedBooks.forEach((b) => {
+          map[b.id] = { ...(map[b.id] || {}), ...b };
+          if (b.gutenbergId) {
+            map[String(b.gutenbergId)] = map[b.id];
+            map[`gutenberg_${b.gutenbergId}`] = map[b.id];
+          }
+        });
+      }
+
+      setBooksMap(map);
+      setStats(summary);
+    } catch (err) {
+      console.warn('Error loading telemetry stats summary:', err);
+      setError(err?.message || 'Failed to load reading statistics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadStats() {
-      setLoading(true);
-      try {
-        const [summary, storedBooks] = await Promise.all([
-          getStatsSummary(),
-          getAllBooks(),
-        ]);
-
-        if (!active) return;
-
-        // Build book lookup dictionary from stored library books
-        const map = {};
-        if (Array.isArray(storedBooks)) {
-          storedBooks.forEach((b) => {
-            map[b.id] = { ...(map[b.id] || {}), ...b };
-            if (b.gutenbergId) {
-              map[String(b.gutenbergId)] = map[b.id];
-              map[`gutenberg_${b.gutenbergId}`] = map[b.id];
-            }
-          });
-        }
-
-        setBooksMap(map);
-        setStats(summary);
-      } catch (err) {
-        console.warn('Error loading telemetry stats summary:', err);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
     loadStats();
-    return () => {
-      active = false;
-    };
-  }, []);
+  }, [loadStats]);
 
   const totalWeeklySeconds = (stats?.weeklyDays || []).reduce(
     (acc, cur) => acc + (cur.seconds || (cur.minutes || 0) * 60),
@@ -140,8 +136,8 @@ export default function Page() {
           <div className="flex items-center gap-1">
             <Link
               href="/library"
-              aria-label="Search"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high/50 active:scale-95 transition-all"
+              aria-label="Search Library"
+              className="min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high/50 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-[20px]">search</span>
             </Link>
@@ -184,8 +180,33 @@ export default function Page() {
           </div>
         )}
 
+        {/* Error State */}
+        {!loading && error && (
+          <div className="px-gutter md:px-8 pt-8 max-w-md mx-auto">
+            <section className="bg-surface-container-lowest/95 backdrop-blur-md rounded-3xl p-8 border border-error/20 soft-editorial-shadow text-center flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-error-container/40 text-error flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[28px]">error</span>
+              </div>
+              <h2 className="font-headline-sm text-headline-sm text-primary font-medium tracking-tight mb-2">
+                Unable to load statistics
+              </h2>
+              <p className="font-body-ui text-caption text-on-surface-variant mb-6 leading-relaxed">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={loadStats}
+                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-on-primary font-body-ui font-medium text-sm flex items-center gap-2 shadow-xs hover:opacity-95 active:scale-[0.98] transition"
+              >
+                <span className="material-symbols-outlined text-[18px]">refresh</span>
+                <span>Retry</span>
+              </button>
+            </section>
+          </div>
+        )}
+
         {/* Loaded Content */}
-        {!loading && (
+        {!loading && !error && (
           <div className="px-gutter md:px-8 pt-5 flex flex-col space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
             {/* Header section with optional Back to <book> link */}
             <section className="lg:col-span-2 flex flex-col space-y-3.5">
@@ -194,7 +215,7 @@ export default function Page() {
                   Your reading
                 </h1>
                 <p className="font-caption text-caption text-on-surface-variant italic leading-relaxed">
-                  Measured on this device, kept on this device. Nothing here has ever left it.
+                  Stored on this device. Synced only if you sign in.
                 </p>
               </div>
 

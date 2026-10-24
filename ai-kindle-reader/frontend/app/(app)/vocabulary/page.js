@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import AiDrawer from '@/components/AiDrawer';
@@ -70,6 +70,7 @@ export default function VocabularyPage() {
 
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [storedBooks, setStoredBooks] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBook, setSelectedBook] = useState('All Books');
@@ -94,8 +95,9 @@ export default function VocabularyPage() {
   const [quizStats, setQuizStats] = useState({ remembered: 0, reviewSoon: 0 });
   const [quizFinished, setQuizFinished] = useState(false);
 
-  const loadVaultVocab = async () => {
+  const loadVaultVocab = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [saved, books] = await Promise.all([
         getAllVocabularyWords(),
@@ -139,14 +141,15 @@ export default function VocabularyPage() {
       }
     } catch (err) {
       console.warn('Error loading vocabulary from vault:', err);
+      setError(err?.message || 'Failed to load vocabulary words from vault');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadVaultVocab();
-  }, []);
+  }, [loadVaultVocab]);
 
   // Book filter chips grouped by bookTitle with real counts, plus "All Books (N)"
   const bookFilterChips = useMemo(() => {
@@ -387,7 +390,7 @@ export default function VocabularyPage() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-9 py-2 rounded-xl bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/40 text-on-surface text-[14px] font-body-ui placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-[0_1px_4px_rgba(44,64,88,0.03)]"
+                className="w-full pl-10 pr-9 py-2 min-h-[44px] rounded-xl bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/40 text-on-surface text-[14px] font-body-ui placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-[0_1px_4px_rgba(44,64,88,0.03)]"
                 placeholder="Search saved words, definitions, or sentences..."
                 type="search"
               />
@@ -396,7 +399,8 @@ export default function VocabularyPage() {
               type="button"
               onClick={handleStartQuiz}
               disabled={words.length === 0}
-              className="shrink-0 flex items-center justify-center gap-1.5 px-4 max-[480px]:px-2.5 max-[480px]:w-9 h-9 rounded-xl bg-primary text-on-primary font-label-md text-label-md shadow-sm hover:bg-primary-container active:scale-95 transition-all disabled:opacity-50"
+              aria-label="Quiz Mode"
+              className="shrink-0 flex items-center justify-center gap-1.5 px-4 max-[480px]:px-2.5 max-[480px]:w-11 min-h-[44px] min-w-[44px] rounded-xl bg-primary text-on-primary font-label-md text-label-md shadow-sm hover:bg-primary-container active:scale-95 transition-all disabled:opacity-50"
               title="Quiz Mode"
             >
               <span className="material-symbols-outlined text-[18px]">psychology</span>
@@ -410,7 +414,8 @@ export default function VocabularyPage() {
                 setLookupMessage('');
                 setAddModalOpen(true);
               }}
-              className="shrink-0 w-9 h-9 rounded-xl bg-surface-container-high text-primary flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all"
+              aria-label="Add word manually"
+              className="shrink-0 min-w-[44px] min-h-[44px] rounded-xl bg-surface-container-high text-primary flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all"
               title="Add word manually"
             >
               <span className="material-symbols-outlined text-[20px]">add</span>
@@ -427,7 +432,7 @@ export default function VocabularyPage() {
                     key={chip.id}
                     type="button"
                     onClick={() => setSelectedBook(chip.id)}
-                    className={`whitespace-nowrap px-3.5 py-1.5 rounded-full font-label-sm text-[12px] transition-colors ${
+                    className={`whitespace-nowrap px-3.5 py-1.5 min-h-[38px] rounded-full font-label-sm text-[12px] transition-colors flex items-center justify-center ${
                       active
                         ? 'bg-primary text-on-primary shadow-sm tracking-wide'
                         : 'bg-surface-container-lowest border border-outline-variant/50 text-on-surface-variant hover:border-outline'
@@ -450,6 +455,29 @@ export default function VocabularyPage() {
               <div className="h-32 bg-surface-container-lowest rounded-2xl"></div>
             </div>
           </div>
+        ) : error ? (
+          /* Error State */
+          <section className="px-5 md:px-8 mt-10">
+            <div className="bg-surface-container-lowest rounded-3xl p-8 border border-error/20 shadow-sm text-center max-w-md mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-full bg-error-container/40 text-error flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-[28px]">error</span>
+              </div>
+              <h3 className="font-headline-sm text-headline-sm font-semibold text-primary">
+                Unable to load vocabulary
+              </h3>
+              <p className="font-body-ui text-sm text-on-surface-variant leading-relaxed">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={loadVaultVocab}
+                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-on-primary font-body-ui font-medium text-sm inline-flex items-center gap-2 shadow-xs hover:opacity-95 active:scale-[0.98] transition"
+              >
+                <span className="material-symbols-outlined text-[18px]">refresh</span>
+                <span>Retry</span>
+              </button>
+            </div>
+          </section>
         ) : words.length === 0 ? (
           /* Empty State when no vocabulary is saved */
           <section className="px-5 md:px-8 mt-10">
@@ -942,7 +970,7 @@ export default function VocabularyPage() {
                         {activeQuizCard.word}
                       </h2>
                       {activeQuizCard.phonetic && (
-                        <span className="font-body-ui text-sm text-outline font-mono block">
+                        <span className="text-sm text-outline font-mono block">
                           {activeQuizCard.phonetic}
                         </span>
                       )}

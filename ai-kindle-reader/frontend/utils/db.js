@@ -1164,6 +1164,24 @@ export async function saveReaderSettings(settings) {
   }
 }
 
+export async function getSettings() {
+  return getReaderSettings();
+}
+
+export async function saveSettings(settings) {
+  if (!isBrowser || !settingsStore) return null;
+  try {
+    const existing = (await settingsStore.getItem('reader_settings')) || {};
+    const updated = { ...existing, ...settings };
+    await settingsStore.setItem('reader_settings', updated);
+    recordWriteTimestamp();
+    return updated;
+  } catch (err) {
+    console.error('[KindleAIReader DB] Error saving settings:', err);
+    return null;
+  }
+}
+
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1514,6 +1532,8 @@ if (isBrowser) {
     getBookMeta,
     saveReaderSettings,
     getReaderSettings,
+    saveSettings,
+    getSettings,
     getReadingLocation,
     saveReadingLocation,
   };

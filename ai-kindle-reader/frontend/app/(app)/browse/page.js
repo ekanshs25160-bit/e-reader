@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -284,11 +284,23 @@ export default function Page() {
   const [isBrowsing, setIsBrowsing] = useState(true);
   const [browseError, setBrowseError] = useState(null);
   const [browseRetryKey, setBrowseRetryKey] = useState(0);
+  const isFirstRequestRef = useRef(true);
+  const [isServerWaking, setIsServerWaking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let wakeTimer = null;
     setIsBrowsing(true);
     setBrowseError(null);
+    setIsServerWaking(false);
+
+    if (isFirstRequestRef.current) {
+      wakeTimer = setTimeout(() => {
+        if (!cancelled) {
+          setIsServerWaking(true);
+        }
+      }, 5000);
+    }
 
     async function loadBrowseBooks() {
       try {
@@ -317,8 +329,11 @@ export default function Page() {
         console.warn('Browse error:', err);
         setBrowseError(err.message || 'Failed to load public domain catalog');
       } finally {
+        if (wakeTimer) clearTimeout(wakeTimer);
         if (!cancelled) {
           setIsBrowsing(false);
+          setIsServerWaking(false);
+          isFirstRequestRef.current = false;
         }
       }
     }
@@ -327,6 +342,7 @@ export default function Page() {
 
     return () => {
       cancelled = true;
+      if (wakeTimer) clearTimeout(wakeTimer);
     };
   }, [selectedTopic, browseRetryKey]);
 
@@ -445,7 +461,7 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-dvh min-h-full font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
+    <div className="min-h-dvh font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
       {/* Background ambient gradient */}
       <div className="fixed top-0 left-0 md:left-20 lg:left-64 right-0 h-80 bg-gradient-to-b from-[#DCE9F5]/70 dark:from-[#1c2438] via-[#EAF2F8]/30 dark:via-[#161c2d]/70 to-transparent pointer-events-none z-0 pb-28 md:pb-10"></div>
 
@@ -502,8 +518,9 @@ export default function Page() {
                   setSearchError(null);
                   setSelectedTopic('All Classics');
                 }}
-                className="absolute right-3 p-1 rounded-full text-on-surface-variant hover:text-primary transition-colors"
-                title="Filter & Clear"
+                className="absolute right-1.5 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"
+                title={searchQuery ? 'Clear search' : 'Filter'}
+                aria-label={searchQuery ? 'Clear search' : 'Filter'}
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {searchQuery ? 'close' : 'tune'}
@@ -571,7 +588,7 @@ export default function Page() {
                     <Link
                       key={book.id}
                       href={`/reader/${encodeURIComponent(book.gutenbergId ? `gutenberg_${book.gutenbergId}` : book.id)}`}
-                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-white/20 border-r border-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none focus:outline-none focus:ring-2 focus:ring-primary/40`}
+                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-l-white/20 border-r border-r-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none focus:outline-none focus:ring-2 focus:ring-primary/40`}
                     >
                       {/* Top Ornament */}
                       <div className="flex items-center justify-center h-4 w-full shrink-0">
@@ -640,12 +657,13 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setViewLayout('list')}
-                  className={`p-1 rounded transition-colors ${
+                  className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded transition-colors ${
                     viewLayout === 'list'
                       ? 'bg-surface-container-lowest text-primary shadow-xs'
                       : 'text-on-surface-variant hover:text-primary'
                   }`}
                   title="List View"
+                  aria-label="List View"
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     format_list_bulleted
@@ -654,12 +672,13 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setViewLayout('grid')}
-                  className={`p-1 rounded transition-colors ${
+                  className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded transition-colors ${
                     viewLayout === 'grid'
                       ? 'bg-surface-container-lowest text-primary shadow-xs'
                       : 'text-on-surface-variant hover:text-primary'
                   }`}
                   title="Grid View"
+                  aria-label="Grid View"
                 >
                   <span className="material-symbols-outlined text-[16px]">grid_view</span>
                 </button>
@@ -699,7 +718,8 @@ export default function Page() {
                     <button
                       type="button"
                       onClick={() => setSearchRetryKey((k) => k + 1)}
-                      className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                      className="min-h-[44px] px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                      aria-label="Retry search"
                     >
                       <span className="material-symbols-outlined text-[16px]">refresh</span>
                       <span>Retry</span>
@@ -711,7 +731,8 @@ export default function Page() {
                         setSearchError(null);
                         setLiveSearchResults(null);
                       }}
-                      className="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface font-label-md text-xs hover:bg-surface-container-highest transition-colors"
+                      className="min-h-[44px] px-4 py-2 rounded-full bg-surface-container-high text-on-surface font-label-md text-xs hover:bg-surface-container-highest transition-colors"
+                      aria-label="Clear search"
                     >
                       Clear Search
                     </button>
@@ -737,7 +758,8 @@ export default function Page() {
                       setSearchQuery('');
                       setLiveSearchResults(null);
                     }}
-                    className="mt-2 px-4 py-1.5 rounded-full bg-surface-container-high text-primary font-label-md text-xs hover:bg-surface-container-highest transition-colors flex items-center gap-1.5"
+                    className="mt-2 min-h-[44px] px-4 py-2 rounded-full bg-surface-container-high text-primary font-label-md text-xs hover:bg-surface-container-highest transition-colors flex items-center gap-1.5"
+                    aria-label="Clear search"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                     <span>Clear Search</span>
@@ -774,6 +796,14 @@ export default function Page() {
               <p className="font-caption text-xs text-on-surface-variant max-w-sm">
                 Fetching public domain titles from Project Gutenberg
               </p>
+              {isServerWaking && (
+                <div className="mt-3 px-4 py-2.5 rounded-xl bg-secondary-container/50 border border-secondary/30 text-on-secondary-container text-xs font-label-md flex items-center gap-2 max-w-md animate-fade-in">
+                  <span className="material-symbols-outlined text-[18px] text-secondary shrink-0 animate-pulse">
+                    hourglass_top
+                  </span>
+                  <span>Waking up the server, this can take up to a minute on the first request</span>
+                </div>
+              )}
             </div>
           ) : browseError ? (
             <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-error-container/20 rounded-2xl border border-error/30 p-8">
@@ -790,12 +820,25 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setBrowseRetryKey((k) => k + 1)}
-                  className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                  className="min-h-[44px] px-5 py-2 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                  aria-label="Retry loading catalog"
                 >
                   <span className="material-symbols-outlined text-[16px]">refresh</span>
                   <span>Retry</span>
                 </button>
               </div>
+            </div>
+          ) : browseResults.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
+              <span className="material-symbols-outlined text-outline text-[40px]">
+                menu_book
+              </span>
+              <h3 className="font-headline-sm text-base font-medium text-primary">
+                No Books Found
+              </h3>
+              <p className="font-caption text-xs text-on-surface-variant max-w-sm">
+                No books currently available in this category.
+              </p>
             </div>
           ) : (
             <BookCollection
@@ -883,7 +926,7 @@ function BookCollection({
                     onDownload(e, book);
                   }
                 }}
-                className={`mt-1 w-full py-1.5 rounded-lg text-xs font-label-md flex items-center justify-center gap-1 transition-colors ${
+                className={`mt-1 w-full min-h-[44px] py-2 sm:py-1.5 rounded-lg text-xs font-label-md flex items-center justify-center gap-1 transition-colors ${
                   !hasDownloadId
                     ? 'bg-surface-container-low text-on-surface-variant/40 cursor-not-allowed opacity-50'
                     : isSaved
@@ -891,6 +934,13 @@ function BookCollection({
                     : 'bg-surface-container hover:bg-primary hover:text-on-primary text-primary'
                 }`}
                 title={
+                  !hasDownloadId
+                    ? 'Download unavailable'
+                    : isSaved
+                    ? 'Open in Reader'
+                    : 'Download EPUB to Vault'
+                }
+                aria-label={
                   !hasDownloadId
                     ? 'Download unavailable'
                     : isSaved
@@ -975,8 +1025,9 @@ function BookCollection({
                   e.stopPropagation();
                   onOpenReader(book);
                 }}
-                className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-[11px] font-label-sm border border-secondary-container hover:opacity-90 transition-opacity"
+                className="shrink-0 min-h-[44px] flex items-center gap-1 px-3 py-2 sm:px-2.5 sm:py-1.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-[11px] font-label-sm border border-secondary-container hover:opacity-90 transition-opacity"
                 title="Open in Reader"
+                aria-label="Open in Reader"
               >
                 <span className="material-symbols-outlined text-[14px]">
                   check_circle
@@ -987,8 +1038,9 @@ function BookCollection({
               <button
                 type="button"
                 disabled
-                className="shrink-0 w-9 h-9 rounded-full bg-surface-container-low text-on-surface-variant/30 border border-outline-variant/20 flex items-center justify-center cursor-not-allowed opacity-50"
+                className="shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-surface-container-low text-on-surface-variant/30 border border-outline-variant/20 flex items-center justify-center cursor-not-allowed opacity-50"
                 title="Download unavailable for this title"
+                aria-label="Download unavailable for this title"
               >
                 <span className="material-symbols-outlined text-[18px]">block</span>
               </button>
@@ -997,8 +1049,9 @@ function BookCollection({
                 type="button"
                 onClick={(e) => onDownload(e, book)}
                 disabled={isDownloading}
-                className="shrink-0 w-9 h-9 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary border border-outline-variant/40 flex items-center justify-center transition-all active:scale-95 group disabled:opacity-50"
+                className="shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary border border-outline-variant/40 flex items-center justify-center transition-all active:scale-95 group disabled:opacity-50"
                 title="Download EPUB to Vault"
+                aria-label="Download EPUB to Vault"
               >
                 {isDownloading ? (
                   <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>

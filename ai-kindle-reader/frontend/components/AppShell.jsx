@@ -156,8 +156,9 @@ export default function AppShell({ children }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
+                aria-label={item.label}
                 className={
-                  'flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 ' +
+                  'flex flex-1 flex-col items-center justify-center min-h-[44px] gap-0.5 rounded-full py-1 ' +
                   (active
                     ? isNight
                       ? 'bg-[#2B384E] text-[#D8A868]'
