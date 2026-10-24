@@ -482,23 +482,30 @@ export default function AiDrawer({
 
   return (
     <>
-      {/* 1. Atmospheric Upper Scrim */}
+      {/* 1. Atmospheric Scrim on Mobile Only */}
       <div
         onClick={handleClose}
-        className="fixed inset-0 bg-primary/20 backdrop-blur-[2.5px] z-40 pointer-events-auto transition-opacity duration-300"
+        className="md:hidden fixed inset-0 bg-primary/20 backdrop-blur-[2.5px] z-40 pointer-events-auto transition-opacity duration-300"
       />
 
-      {/* 2. Slide-Up AI Assistant Bottom Sheet (h-[64%]) */}
-      <section className="fixed bottom-0 left-0 right-0 z-50 h-[64%] bg-surface flex flex-col rounded-t-[24px] border-t border-outline-variant/40 shadow-[0_-8px_32px_rgba(21,42,65,0.12)] transition-transform duration-300 ease-out overflow-hidden sm:max-w-xl sm:mx-auto">
-        {/* Tactile Drag Handle */}
-        <div className="w-full flex justify-center pt-2.5 pb-1">
+      {/* 2. AI Assistant: Phone bottom sheet (45-50%), Tablet & Desktop right-docked panel (420px) */}
+      <aside
+        aria-label="AI Literary Companion"
+        className="fixed z-50 bg-surface flex flex-col border-outline-variant/40 transition-all duration-300 ease-out overflow-hidden text-on-surface
+          /* Phone: bottom sheet 45-50% height */
+          max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[48dvh] max-md:max-h-[50dvh] max-md:rounded-t-3xl max-md:border-t max-md:shadow-[0_-8px_32px_rgba(21,42,65,0.15)]
+          /* Tablet & Desktop: right-docked panel 420px wide */
+          md:top-0 md:right-0 md:bottom-0 md:w-[420px] md:h-full md:rounded-l-3xl md:border-l md:shadow-2xl"
+      >
+        {/* Tactile Drag Handle (Mobile only) */}
+        <div className="md:hidden w-full flex justify-center pt-2.5 pb-1">
           <div className="w-10 h-1 rounded-full bg-outline-variant/60"></div>
         </div>
 
         {/* Drawer Header Bar */}
-        <header className="px-5 py-2 flex items-center justify-between border-b border-outline-variant/20">
+        <header className="px-5 py-2.5 flex items-center justify-between border-b border-outline-variant/20 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-secondary border border-outline-variant/30 shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-secondary border border-outline-variant/30 shadow-xs">
               <span
                 className="material-symbols-outlined text-[18px]"
                 data-icon="auto_stories"
@@ -513,12 +520,12 @@ export default function AiDrawer({
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {/* Spoiler Protection Indicator */}
             <button
               type="button"
               onClick={() => setSpoilersOff((v) => !v)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/40 text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-container-low border border-outline-variant/40 text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container transition-colors min-h-[44px]"
             >
               <span
                 className="material-symbols-outlined text-[14px] text-secondary"
@@ -534,9 +541,9 @@ export default function AiDrawer({
               type="button"
               onClick={handleClose}
               aria-label="Close drawer"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all"
+              className="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
-              <span className="material-symbols-outlined text-[18px]" data-icon="close">
+              <span className="material-symbols-outlined text-[20px]" data-icon="close">
                 close
               </span>
             </button>
@@ -917,7 +924,7 @@ export default function AiDrawer({
             </span>
           </div>
         </footer>
-      </section>
+      </aside>
     </>
   );
 }

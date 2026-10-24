@@ -4,6 +4,22 @@
 @import "@fontsource-variable/newsreader";
 @import "@fontsource-variable/newsreader/wght-italic.css";
 @import "material-symbols/outlined.css";
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.0.21/files/opendyslexic-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.0.21/files/opendyslexic-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -51,3 +67,20 @@ body { min-height: max(884px, 100dvh); }
 * { -ms-overflow-style: none; scrollbar-width: none; }
 .bg-paper-wash { background: linear-gradient(180deg, #dce9f5 0%, #edf3f8 140px, #faf9f6 320px, #faf9f6 100%); }
 .dark .bg-paper-wash { background: linear-gradient(180deg, #1c2438 0%, #161c2d 140px, #141824 320px, #141824 100%); }
+
+/* epub.js container confinement so neighboring pages never show and no padding clips text */
+.epub-container,
+.epub-container > div,
+.epub-view,
+.epub-view > iframe {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.epub-container::-webkit-scrollbar {
+  display: none !important;
+}
+

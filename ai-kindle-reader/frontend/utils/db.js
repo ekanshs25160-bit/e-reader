@@ -122,11 +122,29 @@ export function slugify(text) {
 // 2. BOOK & EPUB BINARY OPERATIONS
 // ==========================================
 
+export async function ensureStoresReady() {
+  if (!isBrowser) return;
+  const stores = [
+    metaStore,
+    blobStore,
+    vocabStore,
+    statsStore,
+    bookmarksStore,
+    highlightsStore,
+    progressStore,
+    settingsStore,
+  ];
+  await Promise.all(
+    stores.map((s) => (s?.ready ? s.ready().catch(() => {}) : Promise.resolve()))
+  );
+}
+
 /**
  * Save a book's metadata and its binary .epub Blob to IndexedDB
  */
 export async function saveBook(bookIdOrMeta, metadataOrBlob, maybeBlob) {
   if (!isBrowser || !metaStore) return null;
+  await ensureStoresReady();
 
   let id;
   let metadata;
@@ -1486,5 +1504,17 @@ export async function getVaultStorageSummary() {
     storageFormatted,
     lastSaved,
     lastSavedFormatted,
+  };
+}
+
+if (isBrowser) {
+  window.__db = {
+    saveBook,
+    getBookBlob,
+    getBookMeta,
+    saveReaderSettings,
+    getReaderSettings,
+    getReadingLocation,
+    saveReadingLocation,
   };
 }
