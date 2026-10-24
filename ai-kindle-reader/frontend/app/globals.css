@@ -195,6 +195,9 @@ body { background: var(--theme-bg); color: var(--theme-ink); }
 :where(.material-symbols-outlined) {
   color: var(--theme-muted);
 }
+:where(.bg-ink, [class*="bg-ink"], .bg-primary) :where(.material-symbols-outlined) {
+  color: var(--theme-background);
+}
 .material-symbols-outlined.active,
 .material-symbols-outlined.fill-icon {
   font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;

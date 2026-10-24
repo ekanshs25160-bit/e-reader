@@ -28,14 +28,16 @@ export function Segmented({
       className={`inline-flex items-center p-1 rounded-full border border-hairline bg-surface/70 backdrop-blur-sm gap-0.5 ${className}`}
     >
       {options.map((opt) => {
-        const isSelected = opt.id === value;
+        const optId = typeof opt === 'string' ? opt : (opt.id ?? opt.value);
+        const optLabel = typeof opt === 'string' ? opt : (opt.label ?? opt.name ?? optId);
+        const isSelected = optId === value;
         return (
           <button
-            key={opt.id}
+            key={optId}
             role="tab"
             type="button"
             aria-selected={isSelected}
-            onClick={() => onChange?.(opt.id)}
+            onClick={() => onChange?.(optId)}
             className={`inline-flex items-center justify-center gap-1.5 rounded-full font-sans font-medium transition-all duration-200 ease-out select-none active:scale-[0.98] focus:outline-none ${sizeClasses} ${
               isSelected
                 ? 'bg-ink text-background shadow-none'
@@ -54,7 +56,7 @@ export function Segmented({
                 {opt.icon}
               </span>
             )}
-            <span>{opt.label}</span>
+            <span>{optLabel}</span>
             {typeof opt.badge !== 'undefined' && (
               <span
                 className={`text-[10px] tabular-nums font-normal ${

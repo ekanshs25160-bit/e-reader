@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { saveBook, getBookBlob, getAllBooks } from '@/utils/db';
 import { searchBooks, browseBooks, downloadEpub } from '@/lib/api';
-import BookCover from '@/components/BookCover';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
+import Cover from '@/components/ui/Cover';
+import Skeleton from '@/components/ui/Skeleton';
 
 const TOPICS = [
   'All Classics',
@@ -18,156 +22,7 @@ const TOPICS = [
   'Essays',
 ];
 
-// Helper to dynamically calculate spine dimensions based on title length
-function getSpineDimensions(title) {
-  const len = (title || '').length;
-  if (len >= 18) {
-    // Big title: e.g. "Crime and Punishment" (20 chars)
-    // Spine is tall and wide enough to fit the full title, and fits comfortably in the shelf
-    return {
-      height: 'h-56 sm:h-60',
-      width: 'w-12 sm:w-14',
-      fontSize: 'text-[10px] sm:text-[10.5px]',
-      tracking: 'tracking-tight',
-    };
-  } else if (len >= 14) {
-    // Medium-long title
-    return {
-      height: 'h-48 sm:h-52',
-      width: 'w-11 sm:w-12',
-      fontSize: 'text-[10.5px] sm:text-[11px]',
-      tracking: 'tracking-normal',
-    };
-  } else if (len >= 10) {
-    // Medium title: e.g. "Frankenstein" (12 chars), "The Odyssey" (11 chars), "Meditations" (11 chars)
-    return {
-      height: 'h-44 sm:h-48',
-      width: 'w-10 sm:w-11',
-      fontSize: 'text-[11px]',
-      tracking: 'tracking-normal',
-    };
-  } else if (len >= 8) {
-    // Short title: e.g. "Moby Dick" (9 chars)
-    return {
-      height: 'h-36 sm:h-40',
-      width: 'w-9 sm:w-10',
-      fontSize: 'text-[11px]',
-      tracking: 'tracking-normal',
-    };
-  } else {
-    // Very short title: e.g. "Dracula" (7 chars)
-    // Spine is compact and smaller
-    return {
-      height: 'h-32 sm:h-36',
-      width: 'w-8 sm:w-9',
-      fontSize: 'text-[11px]',
-      tracking: 'tracking-wide',
-    };
-  }
-}
-
-const TRENDING_SPINES = [
-  {
-    id: 'crime-and-punishment',
-    gutenbergId: '2554',
-    height: 'h-56 sm:h-60',
-    width: 'w-12 sm:w-14',
-    bg: 'bg-[#1a2b3c]',
-    topType: 'text',
-    top: 'VIII',
-    topColor: 'text-[#e0b878]',
-    title: 'Crime and Punishment',
-    titleColor: 'text-surface',
-    fontSize: 'text-[10px] sm:text-[10.5px]',
-    tracking: 'tracking-tight',
-    author: 'Dostoevsky',
-    authorColor: 'text-white/70',
-  },
-  {
-    id: 'frankenstein',
-    gutenbergId: '84',
-    height: 'h-44 sm:h-48',
-    width: 'w-10 sm:w-11',
-    bg: 'bg-[#3a4d3f]',
-    topType: 'icon',
-    top: 'spa',
-    topColor: 'text-[#a8c3af]',
-    title: 'Frankenstein',
-    titleColor: 'text-[#e6ede7]',
-    fontSize: 'text-[11px]',
-    tracking: 'tracking-normal',
-    author: 'M. Shelley',
-    authorColor: 'text-[#a8c3af]',
-  },
-  {
-    id: 'odyssey',
-    gutenbergId: '1727',
-    height: 'h-44 sm:h-48',
-    width: 'w-10 sm:w-11',
-    bg: 'bg-[#8a4229]',
-    topType: 'text-serif',
-    top: 'Ω',
-    topColor: 'text-[#ffd6b8]',
-    title: 'The Odyssey',
-    titleColor: 'text-[#fff0e6]',
-    fontSize: 'text-[11px]',
-    tracking: 'tracking-normal',
-    author: 'Homer',
-    authorColor: 'text-[#ffd6b8]',
-  },
-  {
-    id: 'meditations',
-    gutenbergId: '2680',
-    height: 'h-40 sm:h-44',
-    width: 'w-10 sm:w-10',
-    bg: 'bg-[#7d5628]',
-    topType: 'icon',
-    top: 'star',
-    topColor: 'text-[#ffe09e]',
-    title: 'Meditations',
-    titleColor: 'text-[#fff4df]',
-    fontSize: 'text-[11px]',
-    tracking: 'tracking-normal',
-    author: 'Aurelius',
-    authorColor: 'text-[#ffe09e]',
-  },
-  {
-    id: 'moby-dick',
-    gutenbergId: '2701',
-    height: 'h-36 sm:h-40',
-    width: 'w-9 sm:w-10',
-    bg: 'bg-[#22454a]',
-    topType: 'icon',
-    top: 'sailing',
-    topColor: 'text-[#84bcc4]',
-    title: 'Moby Dick',
-    titleColor: 'text-[#e0f1f3]',
-    fontSize: 'text-[11px]',
-    tracking: 'tracking-normal',
-    author: 'Melville',
-    authorColor: 'text-[#84bcc4]',
-  },
-  {
-    id: 'dracula',
-    gutenbergId: '345',
-    height: 'h-32 sm:h-36',
-    width: 'w-8 sm:w-9',
-    bg: 'bg-[#4a1c24]',
-    topType: 'icon',
-    top: 'cruelty_free',
-    topColor: 'text-[#e89ca9]',
-    title: 'Dracula',
-    titleColor: 'text-[#fbecee]',
-    fontSize: 'text-[11px]',
-    tracking: 'tracking-wide',
-    author: 'B. Stoker',
-    authorColor: 'text-[#e89ca9]',
-  },
-];
-
-
-
-export default function Page() {
+export default function BrowsePage() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -179,7 +34,6 @@ export default function Page() {
   // Search & Navigation States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All Classics');
-  const [viewLayout, setViewLayout] = useState('list'); // 'list' | 'grid'
 
   // Vault Tracking State (populated from IndexedDB books with hasBinary === true)
   const [savedIds, setSavedIds] = useState(() => new Set());
@@ -348,7 +202,7 @@ export default function Page() {
 
   const isSearchMode = Boolean(searchQuery.trim());
 
-  // Check if a book's binary is available in offline vault
+  // Check if a book is downloaded in the local vault
   const isBookInVault = useCallback(
     (book) => {
       if (!book) return false;
@@ -363,11 +217,15 @@ export default function Page() {
     [savedIds]
   );
 
-  // Download Project Gutenberg book via backend proxy and persist to localForage
+  // Download EPUB from Gutenberg
   const handleDownloadGutenbergBook = async (e, book) => {
     if (e && e.stopPropagation) e.stopPropagation();
 
-    const gutenbergId = book.gutenbergId || (book.id && String(book.id).startsWith('gutenberg_') ? String(book.id).replace('gutenberg_', '') : null);
+    const gutenbergId =
+      book.gutenbergId ||
+      (book.id && String(book.id).startsWith('gutenberg_')
+        ? String(book.id).replace('gutenberg_', '')
+        : null);
 
     if (!gutenbergId) {
       showToast('Download is unavailable for this title');
@@ -376,9 +234,10 @@ export default function Page() {
 
     const bookKey = `gutenberg_${gutenbergId}`;
 
-    // 3. If the book already has a stored binary (getBookBlob), skip the download and open it.
     try {
-      const existingBlob = (await getBookBlob(bookKey)) || (book.id ? await getBookBlob(String(book.id)) : null);
+      const existingBlob =
+        (await getBookBlob(bookKey)) ||
+        (book.id ? await getBookBlob(String(book.id)) : null);
       if (existingBlob) {
         setSavedIds((prev) => {
           const next = new Set(prev);
@@ -387,7 +246,7 @@ export default function Page() {
           next.add(String(gutenbergId));
           return next;
         });
-        showToast(`Opening "${book.title}" from offline vault...`);
+        showToast(`Opening "${book.title}" from offline vault`);
         router.push(`/reader/${bookKey}`);
         return;
       }
@@ -396,10 +255,9 @@ export default function Page() {
     }
 
     setDownloadingIds((prev) => new Set(prev).add(book.id));
-    showToast(`Downloading "${book.title}" EPUB binary...`);
+    showToast(`Downloading "${book.title}" EPUB`);
 
     try {
-      // 1. Fetch and validate the EPUB through the backend (throws ApiError on failure)
       const epubBlob = await downloadEpub(gutenbergId);
 
       const authorName = Array.isArray(book.authors)
@@ -425,10 +283,8 @@ export default function Page() {
         addedAt: Date.now(),
       };
 
-      // 2. Save metadata + binary blob ONCE into localForage (IndexedDB) under 'gutenberg_<id>'
       await saveBook(bookKey, bookMeta, epubBlob);
 
-      // Update in-memory savedIds so vault badge updates immediately
       setSavedIds((prev) => {
         const next = new Set(prev);
         next.add(bookKey);
@@ -437,12 +293,9 @@ export default function Page() {
         return next;
       });
 
-      showToast(`Saved "${book.title}" to offline vault!`);
-
-      // 3. Open directly in the Kindle Reader view
+      showToast(`Saved "${book.title}" to offline library`);
       router.push(`/reader/${bookKey}`);
     } catch (err) {
-      // 1. On download failure: show an error toast with the real message, do NOT call saveBook, do NOT navigate.
       console.warn('EPUB download failed:', err);
       showToast(err.message || 'Download failed');
     } finally {
@@ -454,61 +307,58 @@ export default function Page() {
     }
   };
 
-  const handleDownloadBook = handleDownloadGutenbergBook;
-
   if (!isMounted) {
     return <div className="w-full h-dvh bg-background" />;
   }
 
+  const currentBooks = isSearchMode ? liveSearchResults : browseResults;
+  const currentLoading = isSearchMode ? isSearching : isBrowsing;
+  const currentError = isSearchMode ? searchError : browseError;
+
   return (
-    <div className="min-h-dvh font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
-      {/* Background ambient gradient */}
-      <div className="fixed top-0 left-0 md:left-20 lg:left-64 right-0 h-80 bg-gradient-to-b from-[#DCE9F5]/70 dark:from-[#1c2438] via-[#EAF2F8]/30 dark:via-[#161c2d]/70 to-transparent pointer-events-none z-0 pb-28 md:pb-10"></div>
+    <div className="min-h-dvh bg-background text-ink antialiased">
+      <main className="max-w-[72rem] mx-auto px-4 sm:px-8 lg:px-12 pt-6 pb-32 space-y-8">
+        {/* Page Header */}
+        <PageHeader
+          eyebrow="Public Domain"
+          title="The Commons"
+          description={
+            isSearchMode && typeof searchTotal === 'number'
+              ? `${searchTotal.toLocaleString()} catalog volumes found · Project Gutenberg`
+              : 'Free public domain catalog from Project Gutenberg'
+          }
+          actions={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openImportModal}
+              icon="cloud_upload"
+            >
+              Upload .epub
+            </Button>
+          }
+        />
 
-      <main className="relative z-10 max-w-2xl md:max-w-none mx-auto px-margin md:px-8 pt-4 space-y-6 w-full pb-28 md:pb-10">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pt-2">
-          <div>
-            <h1 className="font-display-lg-mobile md:font-headline-lg text-display-lg-mobile md:text-headline-lg text-primary tracking-tight font-medium">
-              The Commons
-            </h1>
-            <p className="font-caption text-caption text-on-surface-variant mt-1 flex items-center gap-1.5">
-              <span>
-                {isSearchMode && typeof searchTotal === 'number'
-                  ? `${searchTotal.toLocaleString()} catalog books found`
-                  : 'Public domain catalog'}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
-              <span className="text-secondary font-medium">Project Gutenberg</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={openImportModal}
-            className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-full bg-surface-container-lowest/90 border border-outline-variant/50 text-primary text-label-sm font-label-sm shadow-sm hover:bg-surface-container-low transition-all active:scale-[0.98]"
-          >
-            <span className="material-symbols-outlined text-[16px] text-secondary">
-              cloud_upload
-            </span>
-            <span>Upload .epub</span>
-          </button>
-        </div>
-
-        {/* Search Input Bar */}
-        <section className="space-y-3">
+        {/* Search Input Bar (Hairline input) */}
+        <div className="space-y-4 max-w-[40rem]">
           <div className="relative flex items-center">
-            <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none">
+            <span
+              className="material-symbols-outlined absolute left-3.5 text-muted text-[20px] pointer-events-none"
+              style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20" }}
+              aria-hidden="true"
+            >
               search
             </span>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-lowest/80 border border-outline-variant/40 rounded-full pl-10 pr-10 py-2.5 text-body-ui font-body-ui text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary shadow-sm backdrop-blur-sm transition-all"
-              placeholder="Search title, author, or subject..."
+              placeholder="Search title, author, or subject…"
               type="text"
+              className="w-full bg-surface border border-hairline rounded-[12px] pl-10 pr-10 py-3 text-[15px] font-sans text-ink placeholder:text-muted/60 focus:outline-none focus:border-ink transition-colors"
             />
             {isSearching ? (
-              <span className="absolute right-3.5 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
-            ) : (
+              <span className="absolute right-3.5 w-4 h-4 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+            ) : searchQuery ? (
               <button
                 type="button"
                 onClick={() => {
@@ -516,555 +366,247 @@ export default function Page() {
                   setLiveSearchResults(null);
                   setSearchTotal(null);
                   setSearchError(null);
-                  setSelectedTopic('All Classics');
                 }}
-                className="absolute right-1.5 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"
-                title={searchQuery ? 'Clear search' : 'Filter'}
-                aria-label={searchQuery ? 'Clear search' : 'Filter'}
+                className="absolute right-1.5 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-muted hover:text-ink transition-colors"
+                title="Clear search"
+                aria-label="Clear search"
               >
-                <span className="material-symbols-outlined text-[18px]">
-                  {searchQuery ? 'close' : 'tune'}
+                <span
+                  className="material-symbols-outlined text-[18px]"
+                  style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+                >
+                  close
                 </span>
               </button>
-            )}
+            ) : null}
           </div>
 
-          {/* Topic Pills - visible when not actively searching */}
+          {/* Topic Chips (selected = ink-filled with check) */}
           {!isSearchMode && (
-            <div className="relative">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-margin px-margin py-1 pr-12">
-                {TOPICS.map((topic) => {
-                  const active = selectedTopic === topic;
-                  return (
-                    <button
-                      key={topic}
-                      type="button"
-                      onClick={() => setSelectedTopic(topic)}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-caption font-label-sm transition-all ${
-                        active
-                          ? 'bg-primary text-on-primary shadow-xs font-semibold'
-                          : 'bg-surface-container-lowest/80 border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-low'
-                      }`}
-                    >
-                      {topic}
-                    </button>
-                  );
-                })}
-              </div>
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent"
-              />
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 py-1">
+              {TOPICS.map((topic) => (
+                <Chip
+                  key={topic}
+                  label={topic}
+                  selected={selectedTopic === topic}
+                  onClick={() => setSelectedTopic(topic)}
+                />
+              ))}
             </div>
           )}
-        </section>
+        </div>
 
-        {/* Curated Bookshelf Spines - visible only when browsing */}
-        {!isSearchMode && (
-          <section className="space-y-3 pt-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-caption text-caption text-on-surface-variant font-semibold tracking-wider">
-                  FEATURED SHELF
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-[11px] font-label-sm">
-                  Curated
-                </span>
-              </div>
-              <span className="font-caption text-[11px] text-outline font-medium">Swipe to browse</span>
-            </div>
-
-            <div className="relative bg-surface-container-lowest/60 border border-outline-variant/30 rounded-2xl p-4 pt-6 shadow-sm backdrop-blur-md overflow-hidden">
-              <div className="flex items-end justify-between sm:justify-around gap-2 sm:gap-3 overflow-x-auto no-scrollbar pt-2 px-1 pb-1 min-h-[265px] sm:min-h-[285px]">
-                {TRENDING_SPINES.map((book) => {
-                  const dims = {
-                    height: book.height || getSpineDimensions(book.title).height,
-                    width: book.width || getSpineDimensions(book.title).width,
-                    fontSize: book.fontSize || getSpineDimensions(book.title).fontSize,
-                    tracking: book.tracking || getSpineDimensions(book.title).tracking,
-                  };
-
-                  return (
-                    <Link
-                      key={book.id}
-                      href={`/reader/${encodeURIComponent(book.gutenbergId ? `gutenberg_${book.gutenbergId}` : book.id)}`}
-                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-l-white/20 border-r border-r-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none focus:outline-none focus:ring-2 focus:ring-primary/40`}
-                    >
-                      {/* Top Ornament */}
-                      <div className="flex items-center justify-center h-4 w-full shrink-0">
-                        {book.topType === 'icon' ? (
-                          <span className={`material-symbols-outlined text-[12px] sm:text-[13px] ${book.topColor}`}>
-                            {book.top}
-                          </span>
-                        ) : book.topType === 'text-serif' ? (
-                          <span className={`font-serif text-[11px] ${book.topColor} font-bold leading-none`}>
-                            {book.top}
-                          </span>
-                        ) : (
-                          <span className={`font-label-sm text-[9px] sm:text-[9.5px] font-bold ${book.topColor} tracking-widest uppercase leading-none`}>
-                            {book.top}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Spine Title - Centered along vertical spine axis */}
-                      <div className="flex-1 w-full flex items-center justify-center overflow-hidden my-1 z-10">
-                        <span
-                          className={`spine-book ${dims.fontSize} font-headline-sm font-semibold ${dims.tracking} ${book.titleColor} text-center`}
-                        >
-                          {book.title}
-                        </span>
-                      </div>
-
-                      {/* Bottom Author */}
-                      <div className="flex items-center justify-center h-4 w-full shrink-0">
-                        <span className={`text-[8px] sm:text-[8.5px] font-caption ${book.authorColor} tracking-tight truncate max-w-full text-center leading-none`}>
-                          {book.author}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-              <div className="h-3 w-full bg-gradient-to-b from-[#b89f82] to-[#998166] rounded-sm shadow-inner mt-0.5 border-t border-[#dfcfbd]"></div>
-              <div className="h-2 w-full bg-[#75614a]/30 blur-[2px] -mt-1"></div>
-              <p className="text-[11px] font-caption text-on-surface-variant text-center pt-2">
-                Curated from the public domain · Free &amp; local-first
-              </p>
-            </div>
-          </section>
+        {/* Waking Up Notice */}
+        {isServerWaking && !currentError && (
+          <div className="border border-hairline bg-surface rounded-[12px] p-3 text-[13px] text-muted flex items-center gap-2 max-w-[40rem]">
+            <span
+              className="material-symbols-outlined text-[18px] text-accent shrink-0 animate-pulse"
+              style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+            >
+              hourglass_top
+            </span>
+            <span>Waking up the server, this can take up to a minute on the first request.</span>
+          </div>
         )}
 
-        {/* Main Content Area: SEARCH RESULTS or BROWSE CATALOG */}
-        <section id="shelves" className="space-y-3.5 pt-2">
-          {/* Header & Layout Switcher */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-caption text-caption text-on-surface-variant font-semibold tracking-wider uppercase">
-                {isSearchMode
-                  ? isSearching
-                    ? 'SEARCHING CATALOG...'
-                    : searchError
-                    ? 'SEARCH ERROR'
-                    : `SEARCH RESULTS (${typeof searchTotal === 'number' ? searchTotal.toLocaleString() : liveSearchResults?.length || 0})`
-                  : 'CURATED SELECTION'}
-              </span>
-            </div>
-
-            {/* Layout switch controls (list vs grid) */}
-            {(!isSearchMode || (!isSearching && !searchError && liveSearchResults?.length > 0)) && (
-              <div className="flex items-center bg-surface-container-high/60 p-0.5 rounded-lg border border-outline-variant/30">
-                <button
-                  type="button"
-                  onClick={() => setViewLayout('list')}
-                  className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded transition-colors ${
-                    viewLayout === 'list'
-                      ? 'bg-surface-container-lowest text-primary shadow-xs'
-                      : 'text-on-surface-variant hover:text-primary'
-                  }`}
-                  title="List View"
-                  aria-label="List View"
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    format_list_bulleted
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewLayout('grid')}
-                  className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded transition-colors ${
-                    viewLayout === 'grid'
-                      ? 'bg-surface-container-lowest text-primary shadow-xs'
-                      : 'text-on-surface-variant hover:text-primary'
-                  }`}
-                  title="Grid View"
-                  aria-label="Grid View"
-                >
-                  <span className="material-symbols-outlined text-[16px]">grid_view</span>
-                </button>
-              </div>
-            )}
+        {/* Results Area */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline pb-2">
+            <span className="text-[10.5px] uppercase tracking-[0.12em] text-muted font-sans font-medium">
+              {isSearchMode
+                ? isSearching
+                  ? 'Searching catalog…'
+                  : currentError
+                  ? 'Search error'
+                  : `Search results (${typeof searchTotal === 'number' ? searchTotal.toLocaleString() : currentBooks?.length || 0})`
+                : `${selectedTopic} (${currentBooks?.length || 0})`}
+            </span>
           </div>
 
-          {/* SEARCH MODE STATES: Loading, Error, Empty, or Results */}
-          {isSearchMode ? (
-            <div>
-              {/* 1. Loading State */}
-              {isSearching && (
-                <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
-                  <div className="w-9 h-9 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  <h3 className="font-headline-sm text-base font-medium text-primary">
-                    Searching Project Gutenberg...
-                  </h3>
-                  <p className="font-caption text-xs text-on-surface-variant max-w-sm">
-                    Querying public domain books for &ldquo;{searchQuery}&rdquo;
-                  </p>
-                </div>
-              )}
-
-              {/* 2. Error State */}
-              {!isSearching && searchError && (
-                <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-error-container/20 rounded-2xl border border-error/30 p-8">
-                  <span className="material-symbols-outlined text-error text-[36px]">
-                    cloud_off
-                  </span>
-                  <h3 className="font-headline-sm text-base font-semibold text-primary">
-                    Search Request Failed
-                  </h3>
-                  <p className="font-caption text-xs text-on-surface-variant max-w-md">
-                    {searchError}
-                  </p>
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setSearchRetryKey((k) => k + 1)}
-                      className="min-h-[44px] px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
-                      aria-label="Retry search"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">refresh</span>
-                      <span>Retry</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSearchError(null);
-                        setLiveSearchResults(null);
-                      }}
-                      className="min-h-[44px] px-4 py-2 rounded-full bg-surface-container-high text-on-surface font-label-md text-xs hover:bg-surface-container-highest transition-colors"
-                      aria-label="Clear search"
-                    >
-                      Clear Search
-                    </button>
+          {/* 1. Loading State */}
+          {currentLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="border border-hairline bg-surface rounded-[12px] p-3.5 flex items-center gap-4"
+                >
+                  <Skeleton className="w-12 h-16 rounded-[4px] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-32" />
                   </div>
                 </div>
-              )}
-
-              {/* 3. Empty Results State */}
-              {!isSearching && !searchError && liveSearchResults && liveSearchResults.length === 0 && (
-                <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
-                  <span className="material-symbols-outlined text-outline text-[40px]">
-                    search_off
-                  </span>
-                  <h3 className="font-headline-sm text-base font-medium text-primary">
-                    No Books Found
-                  </h3>
-                  <p className="font-caption text-xs text-on-surface-variant max-w-sm">
-                    We couldn&apos;t find any public domain books matching &ldquo;{searchQuery}&rdquo; on Project Gutenberg.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setLiveSearchResults(null);
-                    }}
-                    className="mt-2 min-h-[44px] px-4 py-2 rounded-full bg-surface-container-high text-primary font-label-md text-xs hover:bg-surface-container-highest transition-colors flex items-center gap-1.5"
-                    aria-label="Clear search"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
-                    <span>Clear Search</span>
-                  </button>
-                </div>
-              )}
-
-              {/* 4. Results List/Grid */}
-              {!isSearching && !searchError && liveSearchResults && liveSearchResults.length > 0 && (
-                <BookCollection
-                  books={liveSearchResults}
-                  viewLayout={viewLayout}
-                  savedIds={savedIds}
-                  downloadingIds={downloadingIds}
-                  isBookInVault={isBookInVault}
-                  onDownload={handleDownloadBook}
-                  onOpenBook={(book) => {
-                    const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-                    router.push(`/book/${bookKey}`);
-                  }}
-                  onOpenReader={(book) => {
-                    const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-                    router.push(`/reader/${bookKey}`);
-                  }}
-                />
-              )}
+              ))}
             </div>
-          ) : isBrowsing ? (
-            <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
-              <div className="w-9 h-9 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <h3 className="font-headline-sm text-base font-medium text-primary">
-                Loading {selectedTopic}...
-              </h3>
-              <p className="font-caption text-xs text-on-surface-variant max-w-sm">
-                Fetching public domain titles from Project Gutenberg
-              </p>
-              {isServerWaking && (
-                <div className="mt-3 px-4 py-2.5 rounded-xl bg-secondary-container/50 border border-secondary/30 text-on-secondary-container text-xs font-label-md flex items-center gap-2 max-w-md animate-fade-in">
-                  <span className="material-symbols-outlined text-[18px] text-secondary shrink-0 animate-pulse">
-                    hourglass_top
-                  </span>
-                  <span>Waking up the server, this can take up to a minute on the first request</span>
-                </div>
-              )}
-            </div>
-          ) : browseError ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-error-container/20 rounded-2xl border border-error/30 p-8">
-              <span className="material-symbols-outlined text-error text-[36px]">
+          ) : currentError ? (
+            /* 2. Error State with Retry Button */
+            <div className="py-12 px-6 rounded-[12px] border border-hairline bg-surface text-center space-y-3 max-w-[32rem] mx-auto my-6">
+              <span
+                className="material-symbols-outlined text-muted text-[36px]"
+                style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+              >
                 cloud_off
               </span>
-              <h3 className="font-headline-sm text-base font-semibold text-primary">
-                Failed to Load Catalog
+              <h3 className="font-serif text-[20px] text-ink font-normal">
+                Catalog unavailable
               </h3>
-              <p className="font-caption text-xs text-on-surface-variant max-w-md">
-                {browseError}
+              <p className="text-[13px] text-muted font-sans leading-relaxed">
+                {currentError}
               </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setBrowseRetryKey((k) => k + 1)}
-                  className="min-h-[44px] px-5 py-2 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
-                  aria-label="Retry loading catalog"
+              <div className="pt-2 flex justify-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    isSearchMode
+                      ? setSearchRetryKey((k) => k + 1)
+                      : setBrowseRetryKey((k) => k + 1)
+                  }
+                  icon="refresh"
                 >
-                  <span className="material-symbols-outlined text-[16px]">refresh</span>
-                  <span>Retry</span>
-                </button>
+                  Retry
+                </Button>
+                {isSearchMode && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchError(null);
+                      setLiveSearchResults(null);
+                    }}
+                  >
+                    Clear search
+                  </Button>
+                )}
               </div>
             </div>
-          ) : browseResults.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
-              <span className="material-symbols-outlined text-outline text-[40px]">
+          ) : !currentBooks || currentBooks.length === 0 ? (
+            /* 3. Empty State */
+            <div className="py-16 px-6 rounded-[12px] border border-hairline bg-surface text-center space-y-2.5 max-w-[32rem] mx-auto my-6">
+              <span
+                className="material-symbols-outlined text-muted text-[36px]"
+                style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+              >
                 menu_book
               </span>
-              <h3 className="font-headline-sm text-base font-medium text-primary">
-                No Books Found
+              <h3 className="font-serif text-[20px] text-ink font-normal">
+                No volumes found
               </h3>
-              <p className="font-caption text-xs text-on-surface-variant max-w-sm">
-                No books currently available in this category.
+              <p className="text-[13px] text-muted font-sans">
+                {isSearchMode
+                  ? `No public domain titles matched “${searchQuery}”.`
+                  : 'No volumes currently available in this category.'}
               </p>
             </div>
           ) : (
-            <BookCollection
-              books={browseResults}
-              viewLayout={viewLayout}
-              savedIds={savedIds}
-              downloadingIds={downloadingIds}
-              isBookInVault={isBookInVault}
-              onDownload={handleDownloadBook}
-              onOpenBook={(book) => {
-                const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-                router.push(`/book/${bookKey}`);
-              }}
-              onOpenReader={(book) => {
-                const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-                router.push(`/reader/${bookKey}`);
-              }}
-            />
+            /* 4. Results as Hairline Rows */
+            <div className="space-y-2.5">
+              {currentBooks.map((book) => {
+                const isSaved = isBookInVault(book);
+                const isDownloading = downloadingIds.has(book.id);
+                const hasDownloadId = Boolean(
+                  book.gutenbergId ||
+                    (book.id && String(book.id).startsWith('gutenberg_'))
+                );
+                const bookKey = book.gutenbergId
+                  ? `gutenberg_${book.gutenbergId}`
+                  : String(book.id);
+
+                return (
+                  <div
+                    key={book.id}
+                    className="border border-hairline bg-surface rounded-[12px] p-3 sm:p-3.5 flex items-center justify-between gap-3.5 hover:border-ink/25 transition-colors group"
+                  >
+                    <Link
+                      href={`/book/${encodeURIComponent(bookKey)}`}
+                      className="flex items-center gap-3.5 min-w-0 flex-1 focus:outline-none"
+                    >
+                      <div className="w-12 aspect-[2/3] shrink-0">
+                        <Cover
+                          coverUrl={book.coverUrl}
+                          title={book.title}
+                          author={book.author}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10.5px] uppercase tracking-[0.12em] text-muted font-sans font-medium truncate block">
+                          {book.author}
+                        </span>
+                        <h3 className="font-serif text-[16px] sm:text-[17px] text-ink font-normal leading-snug truncate mt-0.5 group-hover:underline">
+                          {book.title}
+                        </h3>
+                        <p className="text-[11.5px] text-muted font-sans tabular-nums mt-0.5 truncate">
+                          {book.meta}
+                        </p>
+                      </div>
+                    </Link>
+
+                    {/* Quiet Download Icon Button */}
+                    <div className="shrink-0 flex items-center">
+                      {isDownloading ? (
+                        <div
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          aria-label="Downloading EPUB"
+                        >
+                          <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : isSaved ? (
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/reader/${bookKey}`)}
+                          className="min-w-[44px] min-h-[44px] px-3 py-1.5 rounded-full border border-hairline bg-surface text-ink text-[12px] font-sans flex items-center gap-1.5 hover:border-ink/40 transition-colors"
+                          title="In offline library — Open reader"
+                          aria-label="In offline library — Open reader"
+                        >
+                          <span
+                            className="material-symbols-outlined text-[16px] text-accent"
+                            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+                          >
+                            check
+                          </span>
+                          <span className="hidden sm:inline text-muted">In Library</span>
+                        </button>
+                      ) : hasDownloadId ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDownloadGutenbergBook(e, book)}
+                          className="min-w-[44px] min-h-[44px] w-10 h-10 rounded-full border border-hairline bg-surface text-muted hover:text-ink hover:border-ink/40 transition-colors flex items-center justify-center"
+                          title="Save to Library"
+                          aria-label={`Save "${book.title}" to Library`}
+                        >
+                          <span
+                            className="material-symbols-outlined text-[18px]"
+                            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+                          >
+                            download
+                          </span>
+                        </button>
+                      ) : (
+                        <div
+                          className="min-w-[44px] min-h-[44px] w-10 h-10 rounded-full border border-hairline/50 text-muted/30 flex items-center justify-center cursor-not-allowed"
+                          title="Download unavailable"
+                          aria-label="Download unavailable"
+                        >
+                          <span
+                            className="material-symbols-outlined text-[18px]"
+                            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+                          >
+                            block
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </section>
-        <div className="h-6"></div>
       </main>
-    </div>
-  );
-}
-
-/**
- * Shared renderer for List vs Grid layouts with full offline vault and download state handling
- */
-function BookCollection({
-  books,
-  viewLayout,
-  downloadingIds,
-  isBookInVault,
-  onDownload,
-  onOpenBook,
-  onOpenReader,
-}) {
-  if (viewLayout === 'grid') {
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {books.map((book) => {
-          const isSaved = isBookInVault(book);
-          const isDownloading = downloadingIds.has(book.id);
-          const hasDownloadId = Boolean(
-            book.gutenbergId || (book.id && String(book.id).startsWith('gutenberg_'))
-          );
-
-          const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-
-          return (
-            <div
-              key={book.id}
-              className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col justify-between gap-2.5 shadow-sm hover:shadow-md transition-all group relative"
-            >
-              <Link
-                href={`/reader/${encodeURIComponent(bookKey)}`}
-                className="flex flex-col gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-xl cursor-pointer"
-              >
-                <BookCover
-                  coverUrl={book.coverUrl}
-                  title={book.title}
-                  author={book.author}
-                  year={book.year}
-                  aspect="aspect-[2/3]"
-                />
-                <div className="min-w-0">
-                  <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider truncate block">
-                    {book.author}
-                  </span>
-                  <h3 className="font-headline-sm text-[15px] text-primary leading-tight font-medium truncate mt-0.5 group-hover:underline">
-                    {book.title}
-                  </h3>
-                </div>
-              </Link>
-
-              <button
-                type="button"
-                disabled={!hasDownloadId || isDownloading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isSaved) {
-                    onOpenReader(book);
-                  } else {
-                    onDownload(e, book);
-                  }
-                }}
-                className={`mt-1 w-full min-h-[44px] py-2 sm:py-1.5 rounded-lg text-xs font-label-md flex items-center justify-center gap-1 transition-colors ${
-                  !hasDownloadId
-                    ? 'bg-surface-container-low text-on-surface-variant/40 cursor-not-allowed opacity-50'
-                    : isSaved
-                    ? 'bg-secondary-container/50 text-on-secondary-container hover:bg-secondary-container'
-                    : 'bg-surface-container hover:bg-primary hover:text-on-primary text-primary'
-                }`}
-                title={
-                  !hasDownloadId
-                    ? 'Download unavailable'
-                    : isSaved
-                    ? 'Open in Reader'
-                    : 'Download EPUB to Vault'
-                }
-                aria-label={
-                  !hasDownloadId
-                    ? 'Download unavailable'
-                    : isSaved
-                    ? 'Open in Reader'
-                    : 'Download EPUB to Vault'
-                }
-              >
-                {!hasDownloadId ? (
-                  <>
-                    <span className="material-symbols-outlined text-[14px]">block</span>
-                    <span>Unavailable</span>
-                  </>
-                ) : isDownloading ? (
-                  <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
-                ) : isSaved ? (
-                  <>
-                    <span className="material-symbols-outlined text-[14px]">check</span>
-                    <span>In Vault</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[14px]">download</span>
-                    <span>Download</span>
-                  </>
-                )}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
-      {books.map((book) => {
-        const isSaved = isBookInVault(book);
-        const isDownloading = downloadingIds.has(book.id);
-        const hasDownloadId = Boolean(
-          book.gutenbergId || (book.id && String(book.id).startsWith('gutenberg_'))
-        );
-
-        const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
-
-        return (
-          <div
-            key={book.id}
-            className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3.5 flex items-center justify-between gap-3.5 shadow-sm hover:shadow-md transition-shadow backdrop-blur-sm group"
-          >
-            <Link
-              href={`/reader/${encodeURIComponent(bookKey)}`}
-              className="flex items-center gap-3.5 min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-xl cursor-pointer"
-            >
-              <div className="w-14 aspect-[2/3] shrink-0">
-                <BookCover
-                  coverUrl={book.coverUrl}
-                  title={book.title}
-                  author={book.author}
-                  year={book.year}
-                  aspect="aspect-[2/3]"
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-caption text-[11px] font-semibold text-secondary uppercase tracking-wider truncate">
-                    {book.author}
-                  </span>
-                </div>
-                <h3 className="font-headline-sm text-[17px] text-primary leading-tight font-medium truncate mt-0.5 group-hover:underline">
-                  {book.title}
-                </h3>
-                <p className="font-caption text-[12px] text-on-surface-variant truncate mt-1">
-                  {book.meta}
-                </p>
-              </div>
-            </Link>
-
-            {isSaved ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenReader(book);
-                }}
-                className="shrink-0 min-h-[44px] flex items-center gap-1 px-3 py-2 sm:px-2.5 sm:py-1.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-[11px] font-label-sm border border-secondary-container hover:opacity-90 transition-opacity"
-                title="Open in Reader"
-                aria-label="Open in Reader"
-              >
-                <span className="material-symbols-outlined text-[14px]">
-                  check_circle
-                </span>
-                <span className="hidden sm:inline">Saved to Vault</span>
-              </button>
-            ) : !hasDownloadId ? (
-              <button
-                type="button"
-                disabled
-                className="shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-surface-container-low text-on-surface-variant/30 border border-outline-variant/20 flex items-center justify-center cursor-not-allowed opacity-50"
-                title="Download unavailable for this title"
-                aria-label="Download unavailable for this title"
-              >
-                <span className="material-symbols-outlined text-[18px]">block</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => onDownload(e, book)}
-                disabled={isDownloading}
-                className="shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary border border-outline-variant/40 flex items-center justify-center transition-all active:scale-95 group disabled:opacity-50"
-                title="Download EPUB to Vault"
-                aria-label="Download EPUB to Vault"
-              >
-                {isDownloading ? (
-                  <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
-                ) : (
-                  <span className="material-symbols-outlined text-[18px] group-hover:translate-y-0.5 transition-transform">
-                    arrow_downward
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
