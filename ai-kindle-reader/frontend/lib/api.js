@@ -85,14 +85,34 @@ function buildQuery(params = {}) {
   return str ? `?${str}` : "";
 }
 
-async function backendFetch(path, init) {
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function backendFetch(path, init, maxRetries = 4) {
   const url = resolveApiUrl(API_BASE_URL, path);
-  try {
-    return await fetch(url, init);
-  } catch (err) {
-    if (isAbortError(err)) throw err;
-    throw new ApiError(`Backend unreachable at ${url}`, 0);
+  let lastErr = null;
+  let res = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      res = await fetch(url, init);
+      // Auto-retry on 502/503/504 while Render free-tier container boots from cold sleep
+      if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < maxRetries) {
+        await wait(2500 * (attempt + 1));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (isAbortError(err)) throw err;
+      lastErr = err;
+      if (attempt < maxRetries) {
+        await wait(2500 * (attempt + 1));
+        continue;
+      }
+    }
   }
+
+  if (res) return res;
+  throw new ApiError(`Backend unreachable at ${url}: ${lastErr?.message || "Connection failed"}`, 0);
 }
 
 async function errorFromResponse(res) {
@@ -142,44 +162,63 @@ function normalizeGutendexBook(b) {
 
 export const searchBooks = async (q, page = 1) => {
   try {
-    return await apiGet(`/api/catalog/search${buildQuery({ q, page })}`);
+    const data = await apiGet(`/api/catalog/search${buildQuery({ q, page })}`);
+    return {
+      total: data?.total ?? (data?.books?.length || 0),
+      books: data?.books || [],
+    };
   } catch {
     const res = await fetch(
-      `https://gutendex.com/books${buildQuery({ search: q, page })}`
+      `https://gutendex.com/books/?${buildQuery({ search: q, page }).replace(/^\?/, "")}`
     );
     if (!res.ok) throw new ApiError("Catalog search failed", res.status);
     const data = await res.json();
     return {
-      count: data.count,
-      results: (data.results || []).map(normalizeGutendexBook),
+      total: data.count,
+      books: (data.results || []).map(normalizeGutendexBook),
     };
   }
 };
 
 export const browseBooks = async (params = {}) => {
   try {
-    return await apiGet(`/api/catalog/browse${buildQuery(params)}`);
+    const data = await apiGet(`/api/catalog/browse${buildQuery(params)}`);
+    return {
+      total: data?.total ?? (data?.books?.length || 0),
+      books: data?.books || [],
+    };
   } catch {
-    const res = await fetch(`https://gutendex.com/books${buildQuery(params)}`);
+    const queryParams = new URLSearchParams();
+    if (params.languages) queryParams.set("languages", params.languages);
+    if (params.page) queryParams.set("page", params.page);
+    if (params.topic && params.topic !== "All Classics") queryParams.set("topic", params.topic);
+
+    const qs = queryParams.toString();
+    const res = await fetch(`https://gutendex.com/books/${qs ? `?${qs}` : ""}`);
     if (!res.ok) throw new ApiError("Catalog browse failed", res.status);
     const data = await res.json();
     return {
-      count: data.count,
-      results: (data.results || []).map(normalizeGutendexBook),
+      total: data.count,
+      books: (data.results || []).map(normalizeGutendexBook),
     };
   }
 };
 
 export const getCatalogBook = async (id) => {
+  const cleanId = String(id).replace(/^gutenberg_/, "").trim();
   try {
-    return await apiGet(`/api/catalog/book/${encodeURIComponent(id)}`);
+    return await apiGet(`/api/catalog/book/${encodeURIComponent(cleanId)}`);
   } catch {
-    // Direct client fallback to Gutendex if Render backend is asleep or blocked
-    const cleanId = String(id).replace(/^gutenberg_/, "");
-    const res = await fetch(`https://gutendex.com/books/${encodeURIComponent(cleanId)}`);
-    if (!res.ok) throw new ApiError(`Book #${cleanId} not found`, res.status);
-    const data = await res.json();
-    return normalizeGutendexBook(data);
+    // Direct client fallback to Gutendex (with mandatory trailing slash)
+    try {
+      const res = await fetch(`https://gutendex.com/books/${encodeURIComponent(cleanId)}/`);
+      if (res.ok) {
+        const data = await res.json();
+        return normalizeGutendexBook(data);
+      }
+    } catch {}
+
+    throw new ApiError(`Book #${cleanId} not found on Project Gutenberg`, 404);
   }
 };
 
@@ -191,8 +230,6 @@ export const getCatalogBook = async (id) => {
 const DICT_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 const DICT_TIMEOUT_MS = 6000;
 const dictCache = new Map();
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Fetch with timeout; honours an optional caller AbortSignal.
 async function fetchWithTimeout(url, { signal, timeout = DICT_TIMEOUT_MS } = {}) {

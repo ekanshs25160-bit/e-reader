@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { saveBook, getBookBlob, getAllBooks } from '@/utils/db';
-import { searchBooks, downloadEpub } from '@/lib/api';
+import { searchBooks, browseBooks, downloadEpub } from '@/lib/api';
 import BookCover from '@/components/BookCover';
 
 const TOPICS = [
@@ -164,118 +164,7 @@ const TRENDING_SPINES = [
   },
 ];
 
-const CATALOG_BOOKS = [
-  {
-    id: 'crime-and-punishment',
-    gutenbergId: '2554',
-    title: 'Crime and Punishment',
-    author: 'Fyodor Dostoevsky',
-    meta: 'Project Gutenberg #2554 · EPUB',
-    topic: 'Russian Lit',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida/AEtjO1Wz7sS5dCSWvn2mC45wMjUDYGmEHtOuW4TJ6PsIGjCoM5_lpwcpBznBlYar-HXn5_g5fBOdK6TKLt5U--LFvfYCF-oDyeMYBY6PipbRQfTCKq_eT5XBIFQBwzIVHIhVG-HN8i3aU8Zux5flpAXV-EKBVjBBR8a6Y5HDeGaEh648iIVVk2AOatX6aVDW8pfaJ6HUMhfmI4cVtV1re0ZQ6goOzZLWdF2ePiA7O1F4TIzeXrHX-3W33MhTww',
-    isStatic: true,
-  },
-  {
-    id: 'frankenstein',
-    gutenbergId: '84',
-    title: 'Frankenstein',
-    author: 'Mary Shelley',
-    meta: 'Project Gutenberg #84 · EPUB',
-    topic: 'Gothic Fiction',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD4nGhbUOmTVk70lnz7gGwEaXKEwmzoL1qx_Z8adzDe_JdsE6Pbo20KLCyfOHlEpAY0kd4kUyiTAoz4hjbQCGytFaHYyeSbT6PrjeOUFm6j36HOPuLJcqP7GPEK-M3xsT8Wh6W2uzDFSfNJw-VglMg8whbqtaEV_IhAGafnVXE_MK6IeaBSWJ6Wx2Y3IrGsaVYi46xHzDUpqL0mx51UQTfRzZ07kUZ_FnGqUXkNVSCegZC4RWQEDUyh',
-    isStatic: true,
-  },
-  {
-    id: 'odyssey',
-    gutenbergId: '1727',
-    title: 'The Odyssey',
-    author: 'Homer',
-    meta: 'Project Gutenberg #1727 · EPUB',
-    topic: 'Poetry',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAeACwBV0M2iT0v1zMj6buRFY5ZzSPUL-cfzJLJgK_Uta9spP87zbWIpy4uMhPqUcMFPn3ASsRwGI1If2w3Ntyumc-QfkvNkymPhRG9wfFtsFpOALQatW0FlQOH-pSeXwELteBRsQigzrkVplrhq3tUpAK6rjpllLI7LC0vxvf4wvByslFEIJxQYhPSNF_SkgPfrvLz1DtiStrlzlq-itqfxw7dSUDI1WOQ7aR8oxw6OEbG1U_xE5qk',
-    isStatic: true,
-  },
-  {
-    id: 'meditations',
-    gutenbergId: '2680',
-    title: 'Meditations',
-    author: 'Marcus Aurelius',
-    meta: 'Project Gutenberg #2680 · EPUB',
-    topic: 'Essays',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCdgPnoRxpgsaGzblwytZKK1_p6To8xDDG4Rlxs2xosRM4hSIx-uBL6NhZtjR_fIQ41bEyUKTbeaZ5Pv5W0DKWZzEuvB365Aus8GBtE5WJIgMbnH_Dquc2fFHaC7yK7BAsVXsWWx1g07kzlgUgyAAZXBx5LZR2_BiIAXlsvYC4aAO8iKJ-r89X0KeAXW-acmVNJqT8HZwOyBKhXgAMGFJvTFStdIIgop6f2AzJbsyTMjypdJyLYSEx2',
-    isStatic: true,
-  },
-  {
-    id: 'moby-dick',
-    gutenbergId: '2701',
-    title: 'Moby Dick',
-    author: 'Herman Melville',
-    meta: 'Project Gutenberg #2701 · EPUB',
-    topic: 'All Classics',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD4nGhbUOmTVk70lnz7gGwEaXKEwmzoL1qx_Z8adzDe_JdsE6Pbo20KLCyfOHlEpAY0kd4kUyiTAoz4hjbQCGytFaHYyeSbT6PrjeOUFm6j36HOPuLJcqP7GPEK-M3xsT8Wh6W2uzDFSfNJw-VglMg8whbqtaEV_IhAGafnVXE_MK6IeaBSWJ6Wx2Y3IrGsaVYi46xHzDUpqL0mx51UQTfRzZ07kUZ_FnGqUXkNVSCegZC4RWQEDUyh',
-    isStatic: true,
-  },
-  {
-    id: 'dracula',
-    gutenbergId: '345',
-    title: 'Dracula',
-    author: 'Bram Stoker',
-    meta: 'Project Gutenberg #345 · EPUB',
-    topic: 'Gothic Fiction',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBYg_CxVcloFU6wMNS-QWRRsAyH6-DLuhRB6Krz5yE_SyyhnAT060lDSvC3nEMsMWA4iiiuyVtwTBCjz4JymUwrWk4SPNLeBbn61LjBUp2-FbTEaDWsfmx6JJBIy9QP2Emj7-GwvzyNNFly3v0rrkzq_BNccU29iNYdeBZaZk0TVEux2EFVqZM-p2dqbBxPwZvNrzUOWzCx_QrFRBy5MbcIKRrMAz9PZOPdwGxm0FJcyVnYFeRh9QgV',
-    isStatic: true,
-  },
-  {
-    id: 'pride-and-prejudice',
-    gutenbergId: '1342',
-    title: 'Pride and Prejudice',
-    author: 'Jane Austen',
-    meta: 'Project Gutenberg #1342 · EPUB',
-    topic: 'All Classics',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAeACwBV0M2iT0v1zMj6buRFY5ZzSPUL-cfzJLJgK_Uta9spP87zbWIpy4uMhPqUcMFPn3ASsRwGI1If2w3Ntyumc-QfkvNkymPhRG9wfFtsFpOALQatW0FlQOH-pSeXwELteBRsQigzrkVplrhq3tUpAK6rjpllLI7LC0vxvf4wvByslFEIJxQYhPSNF_SkgPfrvLz1DtiStrlzlq-itqfxw7dSUDI1WOQ7aR8oxw6OEbG1U_xE5qk',
-    isStatic: true,
-  },
-  {
-    id: 'dorian-gray',
-    gutenbergId: '174',
-    title: 'The Picture of Dorian Gray',
-    author: 'Oscar Wilde',
-    meta: 'Project Gutenberg #174 · EPUB',
-    topic: 'Gothic Fiction',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBYg_CxVcloFU6wMNS-QWRRsAyH6-DLuhRB6Krz5yE_SyyhnAT060lDSvC3nEMsMWA4iiiuyVtwTBCjz4JymUwrWk4SPNLeBbn61LjBUp2-FbTEaDWsfmx6JJBIy9QP2Emj7-GwvzyNNFly3v0rrkzq_BNccU29iNYdeBZaZk0TVEux2EFVqZM-p2dqbBxPwZvNrzUOWzCx_QrFRBy5MbcIKRrMAz9PZOPdwGxm0FJcyVnYFeRh9QgV',
-    isStatic: true,
-  },
-  {
-    id: 'metamorphosis',
-    gutenbergId: '5200',
-    title: 'The Metamorphosis',
-    author: 'Franz Kafka',
-    meta: 'Project Gutenberg #5200 · EPUB',
-    topic: 'Philosophy',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCdgPnoRxpgsaGzblwytZKK1_p6To8xDDG4Rlxs2xosRM4hSIx-uBL6NhZtjR_fIQ41bEyUKTbeaZ5Pv5W0DKWZzEuvB365Aus8GBtE5WJIgMbnH_Dquc2fFHaC7yK7BAsVXsWWx1g07kzlgUgyAAZXBx5LZR2_BiIAXlsvYC4aAO8iKJ-r89X0KeAXW-acmVNJqT8HZwOyBKhXgAMGFJvTFStdIIgop6f2AzJbsyTMjypdJyLYSEx2',
-    isStatic: true,
-  },
-  {
-    id: 'alice-in-wonderland',
-    gutenbergId: '11',
-    title: "Alice's Adventures in Wonderland",
-    author: 'Lewis Carroll',
-    meta: 'Project Gutenberg #11 · EPUB',
-    topic: 'Sci-Fi & Fantasy',
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDtmlDXOB9CPHilQs0e_xWY1BkWyQCULI2MFJ6Qg86hRhQX3twKmegXdUqzGzSYu57J1eMX76yJ1w11aB0W14k5WZY8Kj3BHJrBtOad29JVki4GOk7AI5e00gVHduQ9-iWm9zTp1mg-WxUul-myLkh7fYCl-_s8rfYIaGVbWkQOi0DPnMQv0c0DwRplyG9jV3NM0Lta-5oxfgAGxFNzqjUKSQZ7U-i2jFxUMAHHNcXY6skAzewrsCpH',
-    isStatic: true,
-  },
-];
+
 
 export default function Page() {
   const [isMounted, setIsMounted] = useState(false);
@@ -389,15 +278,56 @@ export default function Page() {
     };
   }, [searchQuery, searchRetryKey]);
 
-  // Catalog filtered by topic when no active search query is present
-  const browseCatalog = useMemo(() => {
-    return CATALOG_BOOKS.filter((book) => {
-      if (selectedTopic !== 'All Classics' && book.topic !== selectedTopic) {
-        return false;
+  // Live Browse Catalog by Topic from Gutenberg
+  const [browseResults, setBrowseResults] = useState([]);
+  const [isBrowsing, setIsBrowsing] = useState(true);
+  const [browseError, setBrowseError] = useState(null);
+  const [browseRetryKey, setBrowseRetryKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsBrowsing(true);
+    setBrowseError(null);
+
+    async function loadBrowseBooks() {
+      try {
+        const topicParam = selectedTopic === 'All Classics' ? '' : selectedTopic;
+        const res = await browseBooks({ topic: topicParam });
+        if (cancelled) return;
+        const books = res?.books || [];
+        const mapped = books.map((b) => ({
+          id: `gutenberg_${b.id}`,
+          gutenbergId: String(b.id),
+          title: b.title,
+          author: b.authors?.[0] || 'Classic Author',
+          authors: b.authors || [],
+          languages: Array.isArray(b.languages) ? b.languages : [],
+          subjects: Array.isArray(b.subjects) ? b.subjects : [],
+          downloadCount: b.downloadCount ?? null,
+          copyright: b.copyright ?? null,
+          meta: `Gutenberg #${b.id} · EPUB`,
+          topic: selectedTopic,
+          coverUrl: b.coverUrl || null,
+          isStatic: false,
+        }));
+        setBrowseResults(mapped);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('Browse error:', err);
+        setBrowseError(err.message || 'Failed to load public domain catalog');
+      } finally {
+        if (!cancelled) {
+          setIsBrowsing(false);
+        }
       }
-      return true;
-    });
-  }, [selectedTopic]);
+    }
+
+    loadBrowseBooks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTopic, browseRetryKey]);
 
   const isSearchMode = Boolean(searchQuery.trim());
 
@@ -848,10 +778,41 @@ export default function Page() {
                 />
               )}
             </div>
+          ) : isBrowsing ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-low/40 rounded-2xl border border-outline-variant/30 p-8">
+              <div className="w-9 h-9 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <h3 className="font-headline-sm text-base font-medium text-primary">
+                Loading {selectedTopic}...
+              </h3>
+              <p className="font-caption text-xs text-on-surface-variant max-w-sm">
+                Fetching public domain titles from Project Gutenberg
+              </p>
+            </div>
+          ) : browseError ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-error-container/20 rounded-2xl border border-error/30 p-8">
+              <span className="material-symbols-outlined text-error text-[36px]">
+                cloud_off
+              </span>
+              <h3 className="font-headline-sm text-base font-semibold text-primary">
+                Failed to Load Catalog
+              </h3>
+              <p className="font-caption text-xs text-on-surface-variant max-w-md">
+                {browseError}
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBrowseRetryKey((k) => k + 1)}
+                  className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[16px]">refresh</span>
+                  <span>Retry</span>
+                </button>
+              </div>
+            </div>
           ) : (
-            /* BROWSE MODE: Regular static curated catalog */
             <BookCollection
-              books={browseCatalog}
+              books={browseResults}
               viewLayout={viewLayout}
               savedIds={savedIds}
               downloadingIds={downloadingIds}

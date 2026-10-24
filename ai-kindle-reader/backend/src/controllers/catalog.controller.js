@@ -3,23 +3,26 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { Readable } from "node:stream";
 
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 const formatGutendexBooks = (rawData) => {
-  const results = rawData.results || []; // ai 
-  const filteredBooks = results.filter(   //ai
-    (book) => book.formats?.["application/epub+zip"],
+  const results = rawData?.results || [];
+  const filteredBooks = results.filter(
+    (book) => book.formats?.["application/epub+zip"]
   );
-  const books = filteredBooks.map((book) => ({
+  return filteredBooks.map((book) => ({
     id: book.id,
     title: book.title,
     authors: book.authors?.map((a) => a.name) || [],
     coverUrl: book.formats?.["image/jpeg"] || null,
     downloadUrl: book.formats?.["application/epub+zip"] || null,
     languages: book.languages || [],
-    subjects: book.subjects || [],  // ai
-    downloadCount: book.download_count ?? null,   //ai
-    copyright: book.copyright ?? null,  //ai
+    subjects: book.subjects || [],
+    downloadCount: book.download_count ?? null,
+    copyright: book.copyright ?? null,
+    description: (book.summaries && book.summaries[0]) || null,
   }));
-  return books;
 };
 
 const formatSingleBook = (book) => {
@@ -33,6 +36,7 @@ const formatSingleBook = (book) => {
     subjects: book.subjects || [],
     downloadCount: book.download_count ?? null,
     copyright: book.copyright ?? null,
+    description: (book.summaries && book.summaries[0]) || null,
   };
 };
 
@@ -45,40 +49,28 @@ export const searchBooks = asyncHandler(async (req, res) => {
       .json(new ApiError(400, "Search query requires title"));
   }
 
+  // Gutendex requires trailing slash before query string
   const response = await fetch(
-    `https://gutendex.com/books?search=${encodeURIComponent(q)}&page=${page}`,
+    `https://gutendex.com/books/?search=${encodeURIComponent(q)}&page=${page}`,
     {
       headers: {
-        accept: "application/json",
-        "User-Agent": "KindleReader/1.0 (Educational Project)",
+        Accept: "application/json",
+        "User-Agent": BROWSER_USER_AGENT,
       },
-    },
+      redirect: "follow",
+    }
   );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Upstream status:", response.status);
-    console.error(errorText.slice(0, 500));
+    console.error("Gutendex search error:", response.status, errorText.slice(0, 300));
     throw new ApiError(
-      502,
-      "Upstream catalog service is temporarily unavailable",
+      response.status,
+      `Project Gutenberg catalog error (${response.status})`
     );
   }
 
   const rawData = await response.json();
-
-  // const filteredBooks = rawData.results.filter(
-  //   (book) => book.formats?.["application/epub+zip"],
-  // );
-  // const books = filteredBooks.map((book) => ({
-  //   id: book.id,
-  //   title: book.title,
-  //   authors: book.authors?.map((a) => a.name) || [],
-  //   coverUrl: book.formats?.["image/jpeg"] || null,
-  //   downloadUrl: book.formats?.["application/epub+zip"] || null,
-  //   languages: book.languages || [],
-  // }));
-
   const books = formatGutendexBooks(rawData);
 
   const payload = {
@@ -86,6 +78,7 @@ export const searchBooks = asyncHandler(async (req, res) => {
     page: Number(page) || 1,
     books: books,
   };
+
   return res
     .status(200)
     .json(new ApiResponse(200, payload, "Here are the required books"));
@@ -113,7 +106,7 @@ export const downloadBook = asyncHandler(async (req, res) => {
       const resp = await fetch(url, {
         headers: {
           Accept: "application/epub+zip",
-          "User-Agent": "KindleReader/1.0 (Educational Project)",
+          "User-Agent": BROWSER_USER_AGENT,
         },
         redirect: "follow",
       });
@@ -127,13 +120,10 @@ export const downloadBook = asyncHandler(async (req, res) => {
   }
 
   if (!successResponse) {
-    throw new ApiError(
-      404,
-      `Book ${cleanId} not found on Gutenberg`,
-    );
+    throw new ApiError(404, `Book ${cleanId} not found on Project Gutenberg`);
   }
 
-  // Tell our client's browser what it is receiving
+  // Stream live EPUB binary from Gutenberg to client
   res.setHeader("Content-Type", "application/epub+zip");
   res.setHeader("Content-Disposition", `attachment; filename="${cleanId}.epub"`);
 
@@ -141,35 +131,34 @@ export const downloadBook = asyncHandler(async (req, res) => {
 });
 
 export const browseCatalog = asyncHandler(async (req, res) => {
-  const { topic, languages = "en", sort = "popular", page = 1 } = req.query;
-  // const topicQuery = topic? encodeURIComponent(topic) : ''
-  const params = new URLSearchParams({ sort, languages, page });
-  if (topic) {
+  const { topic, languages = "en", page = 1 } = req.query;
+  const params = new URLSearchParams({ languages, page });
+  if (topic && topic !== "All Classics") {
     params.append("topic", topic);
   }
+
+  // Gutendex requires trailing slash before query string
   const response = await fetch(
-    `https://gutendex.com/books?${params.toString()}`,
+    `https://gutendex.com/books/?${params.toString()}`,
     {
       headers: {
         Accept: "application/json",
-        "User-Agent": "KindleReader/1.0 (Educational Project)",
+        "User-Agent": BROWSER_USER_AGENT,
       },
-    },
+      redirect: "follow",
+    }
   );
-
-  // console.log(response)
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gutendex Error:", response.status, errorText.slice(0, 300));
+    console.error("Gutendex browse error:", response.status, errorText.slice(0, 300));
     throw new ApiError(
       response.status,
-      `Upstream catalog error (${response.status})`,
+      `Project Gutenberg catalog error (${response.status})`
     );
   }
 
   const rawData = await response.json();
-
   const gotIt = formatGutendexBooks(rawData);
 
   const payload = {
@@ -190,19 +179,24 @@ export const getBookById = asyncHandler(async (req, res) => {
     return res.status(400).json(new ApiError(400, "Book ID is not provided"));
   }
 
-  const response = await fetch(`https://gutendex.com/books/${encodeURIComponent(cleanId)}`, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "KindleReader/1.0 (Educational Project)",
-    },
-  });
+  // Gutendex requires trailing slash for book details
+  const response = await fetch(
+    `https://gutendex.com/books/${encodeURIComponent(cleanId)}/`,
+    {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": BROWSER_USER_AGENT,
+      },
+      redirect: "follow",
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gutendex Error:", response.status, errorText.slice(0, 300));
+    console.error("Gutendex details error:", response.status, errorText.slice(0, 300));
     throw new ApiError(
       response.status,
-      `Upstream catalog error (${response.status})`,
+      `Book #${cleanId} not found on Project Gutenberg (${response.status})`
     );
   }
 

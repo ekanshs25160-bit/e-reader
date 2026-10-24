@@ -229,7 +229,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
           flow: "paginated",
           manager: "default",
           spread: "none",
-          allowScriptedContent: true,
+          allowScriptedContent: false,
         });
         renditionRef.current = rendition;
 

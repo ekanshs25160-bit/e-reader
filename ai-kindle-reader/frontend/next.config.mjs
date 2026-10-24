@@ -25,16 +25,20 @@ const nextConfig = {
       .replace(/\/api\/?$/, "")
       .replace(/\/+$/, "");
 
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${rawBackend}/api/:path*`,
-      },
-      {
-        source: "/health",
-        destination: `${rawBackend}/health`,
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${rawBackend}/api/:path*`,
+        },
+        {
+          source: "/health",
+          destination: `${rawBackend}/health`,
+        },
+      ],
+    };
   },
 };
 
