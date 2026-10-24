@@ -549,11 +549,10 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
               doc.head.appendChild(link);
             }
             if (!doc.getElementById("flyleaf-opendyslexic")) {
-              const odLink = doc.createElement("link");
-              odLink.id = "flyleaf-opendyslexic";
-              odLink.rel = "stylesheet";
-              odLink.href = "https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.0.21/index.min.css";
-              doc.head.appendChild(odLink);
+              const odStyle = doc.createElement("style");
+              odStyle.id = "flyleaf-opendyslexic";
+              odStyle.textContent = "@font-face { font-family: 'OpenDyslexic'; src: local('OpenDyslexic'), local('OpenDyslexic-Regular'); font-weight: 400; font-style: normal; font-display: swap; } @font-face { font-family: 'OpenDyslexic'; src: local('OpenDyslexic-Bold'), local('OpenDyslexic'); font-weight: 700; font-style: normal; font-display: swap; }";
+              doc.head.appendChild(odStyle);
             }
           }
 

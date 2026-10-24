@@ -6,16 +6,24 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getAllBooks, deleteBook } from '@/utils/db';
 import { pluralize } from '@/lib/format';
+import {
+  PageHeader,
+  Card,
+  Button,
+  Segmented,
+  ProgressLine,
+  Cover,
+  EmptyState,
+  Skeleton,
+} from '@/components/ui';
 
-const SPINE_PALETTES = [
-  { bg: '#223348', text: '#e3e9f0', accent: '#97acc8' }, // deep navy
-  { bg: '#53232b', text: '#f7e6e8', accent: '#e8b4b8' }, // burgundy
-  { bg: '#2d4237', text: '#e2ede6', accent: '#a3c2b0' }, // forest green
-  { bg: '#8a4e28', text: '#fdece2', accent: '#f5c6aa' }, // warm terracotta
-  { bg: '#1c232c', text: '#d6dade', accent: '#9da7b3' }, // dark slate
-  { bg: '#4a5859', text: '#ecefed', accent: '#b0c2c3' }, // sage teal
-  { bg: '#3a2e39', text: '#eddfe7', accent: '#cbb3c2' }, // plum/aubergine
-  { bg: '#5c4033', text: '#f5ebe6', accent: '#d2b48c' }, // leather brown
+const SPINE_TONES = [
+  { bg: '#152A41', text: '#FAF9F6', accent: '#855224' }, // Navy / Bronze
+  { bg: '#223348', text: '#E3E9F0', accent: '#97ACC8' }, // Deep Slate
+  { bg: '#2D4237', text: '#E2EDE6', accent: '#A3C2B0' }, // Forest
+  { bg: '#5C4033', text: '#F5EBE6', accent: '#D2B48C' }, // Leather
+  { bg: '#4A5859', text: '#ECEFED', accent: '#B0C2C3' }, // Sage
+  { bg: '#3A2E39', text: '#EDDFE7', accent: '#CBB3C2' }, // Aubergine
 ];
 
 function hashString(str) {
@@ -28,9 +36,9 @@ function hashString(str) {
   return Math.abs(hash);
 }
 
-function getBookPalette(id) {
+function getSpineTone(id) {
   const h = hashString(id);
-  return SPINE_PALETTES[h % SPINE_PALETTES.length];
+  return SPINE_TONES[h % SPINE_TONES.length];
 }
 
 function getAuthorInitials(author) {
@@ -40,71 +48,10 @@ function getAuthorInitials(author) {
 }
 
 /**
- * Cover with image support and deterministic typographic fallback
+ * Flat Shelf Spine (Editorial spec: flat ink/bronze tones, no 3D gradients or shadows)
  */
-function BookCoverItem({ book, aspect = 'aspect-[2/3]' }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const palette = useMemo(() => getBookPalette(book.id), [book.id]);
-
-  if (book.coverUrl && !imgFailed) {
-    return (
-      <div
-        className={`relative ${aspect} w-full rounded-md overflow-hidden shadow-md bg-surface-container subtle-paper-border`}
-      >
-        <img
-          src={book.coverUrl}
-          alt={book.title}
-          onError={() => setImgFailed(true)}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-        />
-        <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/35 via-white/10 to-transparent pointer-events-none" />
-      </div>
-    );
-  }
-
-  // Typographic Fallback Cover
-  return (
-    <div
-      style={{ backgroundColor: palette.bg, color: palette.text }}
-      className={`relative ${aspect} w-full rounded-md overflow-hidden shadow-md p-2.5 flex flex-col justify-between border-l-[3px] border-black/30 subtle-paper-border select-none group-hover:scale-105 transition-transform duration-300`}
-    >
-      <div className="absolute inset-1.5 border border-white/20 rounded pointer-events-none" />
-      <div className="text-right z-10">
-        <span
-          style={{ color: palette.accent }}
-          className="text-[8px] font-caption tracking-widest uppercase"
-        >
-          {book.year || 'Flyleaf'}
-        </span>
-      </div>
-      <div className="text-center z-10 px-0.5 my-auto">
-        <h4 className="font-headline-md text-[12px] leading-tight font-medium line-clamp-3">
-          {book.title}
-        </h4>
-        <p
-          style={{ color: palette.accent }}
-          className="text-[9px] font-caption mt-1 truncate"
-        >
-          {book.author}
-        </p>
-      </div>
-      <div className="z-10 flex justify-between items-center text-[9px] font-caption border-t border-white/15 pt-0.5">
-        <span style={{ color: palette.accent }} className="truncate max-w-[50px]">
-          {book.category || 'Vault'}
-        </span>
-        <span className="font-semibold">{book.progressPercentage || 0}%</span>
-      </div>
-      <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/40 via-white/10 to-transparent pointer-events-none" />
-    </div>
-  );
-}
-
-/**
- * Dynamic Shelf Spine
- */
-function ShelfSpine({ book }) {
-  const palette = useMemo(() => getBookPalette(book.id), [book.id]);
+function FlatShelfSpine({ book }) {
+  const tone = useMemo(() => getSpineTone(book.id), [book.id]);
   const authorInitials = useMemo(() => getAuthorInitials(book.author), [book.author]);
 
   const pages = Number(book.totalPages || book.pages) || 0;
@@ -118,35 +65,36 @@ function ShelfSpine({ book }) {
       href={`/reader/${encodeURIComponent(book.id)}`}
       style={{
         height: `${heightPx}px`,
-        backgroundColor: palette.bg,
-        color: palette.text,
+        backgroundColor: tone.bg,
+        color: tone.text,
       }}
-      className="group relative flex-shrink-0 w-11 rounded-t-[4px] p-1.5 flex flex-col justify-between spine-shadow-left cursor-pointer transition-transform duration-200 hover:-translate-y-2 active:scale-95 border-l border-white/10"
+      className="group relative flex-shrink-0 w-11 rounded-t-[4px] p-2 flex flex-col justify-between border-l border-hairline/30 select-none transition-transform duration-200 hover:-translate-y-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       title={`${book.title} by ${book.author}`}
+      aria-label={`${book.title} by ${book.author}`}
     >
-      <div className="flex justify-between items-center w-full border-b border-white/20 pb-0.5">
+      <div className="flex justify-between items-center w-full border-b border-white/20 pb-1">
         <span
-          style={{ color: palette.accent }}
-          className="text-[7px] font-caption tracking-widest uppercase truncate max-w-[24px]"
+          style={{ color: tone.accent }}
+          className="text-[7.5px] font-sans tracking-widest uppercase truncate max-w-[24px]"
         >
           {book.year ? String(book.year).slice(-2) : '•'}
         </span>
         <span
           className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: palette.accent }}
+          style={{ backgroundColor: tone.accent }}
         />
       </div>
 
       <div className="flex-1 flex items-center justify-center overflow-hidden py-1">
-        <span className="spine-book font-headline-sm text-[11px] tracking-wider uppercase font-medium truncate">
+        <span className="font-serif text-[11px] tracking-wider uppercase font-normal truncate -rotate-90 whitespace-nowrap block">
           {book.title}
         </span>
       </div>
 
-      <div className="border-t border-white/20 pt-0.5 text-center">
+      <div className="border-t border-white/20 pt-1 text-center">
         <span
-          style={{ color: palette.accent }}
-          className="font-body-ui-bold text-[8px] tracking-wider"
+          style={{ color: tone.accent }}
+          className="font-sans font-medium text-[8px] tracking-wider"
         >
           {authorInitials}
         </span>
@@ -155,117 +103,85 @@ function ShelfSpine({ book }) {
   );
 }
 
-export default function Page() {
+export default function LibraryPage() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const router = useRouter();
-  const { openImportModal, showToast } = useTheme();
+  const { openImportModal } = useTheme();
 
-  const [viewMode, setViewMode] = useState('grid'); // 'spine' | 'grid' | 'list'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reading' | 'finished' | 'to-read'
-  const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'progress'
   const [booksList, setBooksList] = useState([]);
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reading' | 'finished'
+  const [viewMode, setViewMode] = useState('grid'); // 'shelf' | 'grid' | 'list'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'progress'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [bookToDelete, setBookToDelete] = useState(null);
 
-  const fetchVaultBooks = useCallback(async () => {
+  const loadLibrary = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const vaultBooks = await getAllBooks();
-      const loaded = (vaultBooks || []).map((b) => {
-        const pct =
-          b.progressPercentage !== undefined
-            ? b.progressPercentage
-            : b.progress !== undefined
-            ? b.progress
-            : 0;
-        return {
-          ...b,
-          progressPercentage: pct,
-          status:
-            b.status || (pct >= 100 ? 'finished' : pct > 0 ? 'reading' : 'to-read'),
-          hasBinary: Boolean(b.hasBinary),
-        };
-      });
-      setBooksList(loaded);
+      const stored = await getAllBooks();
+      setBooksList(stored || []);
     } catch (err) {
-      console.warn('Failed to load books from vault:', err);
-      setError(err?.message || 'Failed to load books from your vault');
+      console.error('Failed to load library:', err);
+      setError('Could not access stored volumes.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchVaultBooks();
-  }, [fetchVaultBooks]);
+    loadLibrary();
+  }, [loadLibrary]);
 
-  // Real Counts for Filter Tabs
-  const counts = useMemo(() => {
-    let reading = 0;
-    let finished = 0;
-    let toRead = 0;
-
-    booksList.forEach((b) => {
-      const pct = b.progressPercentage || 0;
-      const status = b.status || (pct >= 100 ? 'finished' : pct > 0 ? 'reading' : 'to-read');
-      if (status === 'finished' || pct >= 100) {
-        finished++;
-      } else if (status === 'reading' || pct > 0) {
-        reading++;
-      } else {
-        toRead++;
-      }
-    });
-
-    return {
-      all: booksList.length,
-      reading,
-      finished,
-      toRead,
-    };
+  // Counts for Segmented Filter
+  const filterCounts = useMemo(() => {
+    const all = booksList.length;
+    const reading = booksList.filter(
+      (b) => b.status === 'reading' || ((b.progressPercentage || 0) > 0 && (b.progressPercentage || 0) < 100)
+    ).length;
+    const finished = booksList.filter(
+      (b) => b.status === 'finished' || (b.progressPercentage || 0) >= 100
+    ).length;
+    return { all, reading, finished };
   }, [booksList]);
 
-  // Filtered & Sorted Book Collection
+  // Filtered and Sorted Books
   const filteredBooks = useMemo(() => {
     let list = booksList.filter((b) => {
-      const pct = b.progressPercentage || 0;
-      const status = b.status || (pct >= 100 ? 'finished' : pct > 0 ? 'reading' : 'to-read');
-
       if (activeFilter === 'reading') {
-        if (status !== 'reading' && pct === 0) return false;
-        if (pct >= 100) return false;
-      } else if (activeFilter === 'finished') {
-        if (status !== 'finished' && pct < 100) return false;
-      } else if (activeFilter === 'to-read') {
-        if (status !== 'to-read' && pct > 0) return false;
+        const p = b.progressPercentage || 0;
+        return b.status === 'reading' || (p > 0 && p < 100);
       }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchTitle = (b.title || '').toLowerCase().includes(q);
-        const matchAuthor = (b.author || '').toLowerCase().includes(q);
-        return matchTitle || matchAuthor;
+      if (activeFilter === 'finished') {
+        const p = b.progressPercentage || 0;
+        return b.status === 'finished' || p >= 100;
       }
-
       return true;
     });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (b) =>
+          (b.title || '').toLowerCase().includes(q) ||
+          (b.author || '').toLowerCase().includes(q)
+      );
+    }
 
     if (sortBy === 'title') {
       list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     } else if (sortBy === 'progress') {
-      list = [...list].sort((a, b) => (b.progressPercentage || 0) - (a.progressPercentage || 0));
-    } else {
-      // 'recent'
       list = [...list].sort(
-        (a, b) =>
-          (b.lastReadTimestamp || b.addedAt || 0) - (a.lastReadTimestamp || a.addedAt || 0)
+        (a, b) => (b.progressPercentage || 0) - (a.progressPercentage || 0)
+      );
+    } else {
+      list = [...list].sort(
+        (a, b) => (b.lastRead || b.addedAt || 0) - (a.lastRead || a.addedAt || 0)
       );
     }
 
@@ -275,521 +191,256 @@ export default function Page() {
   const cycleSort = () => {
     const next = sortBy === 'recent' ? 'title' : sortBy === 'title' ? 'progress' : 'recent';
     setSortBy(next);
-    showToast(
-      `Sorted by ${
-        next === 'recent'
-          ? 'Recent'
-          : next === 'title'
-          ? 'Title (A–Z)'
-          : 'Reading Progress'
-      }`
-    );
   };
 
-  // Real Footer Counts
-  const totalBooksKept = booksList.length;
-  const totalPagesRead = booksList.reduce(
-    (acc, b) =>
-      acc +
-      (b.currentPage ||
-        Math.round(((b.progressPercentage || 0) / 100) * (b.totalPages || b.pages || 0)) ||
-        0),
-    0
-  );
+  const sortLabel = {
+    recent: 'Recent',
+    title: 'Title A–Z',
+    progress: 'Progress',
+  }[sortBy];
 
   if (!isMounted) {
-    return <div className="w-full h-dvh bg-background" />;
+    return <div className="w-full min-h-dvh bg-background" />;
   }
 
   return (
-    <div className="min-h-dvh bg-background text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary">
-      <div className="w-full bg-background relative flex-col overflow-x-hidden pb-28 md:pb-10">
-        <div className="pointer-events-none absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-[#dce9f5]/70 dark:from-[#1c2438] via-[#e9f0f6]/40 dark:via-[#161c2d]/70 to-transparent z-0"></div>
-
-        {/* Header Bar */}
-        <section className="relative z-10 px-5 md:px-8 pt-3 pb-2">
-          <div className="flex justify-between items-end">
-            <div>
-              <h2 className="font-display-lg-mobile text-display-lg-mobile text-primary tracking-tight font-normal">
-                The Library
-              </h2>
-              <p className="font-body-ui text-label-md text-on-surface-variant mt-0.5">
-                every book you keep ·{' '}
-                <span className="font-body-ui-bold text-on-surface">
-                  {pluralize(filteredBooks.length, 'volume')}
-                </span>
-              </p>
-            </div>
-            <div className="flex items-center p-1 bg-surface-container-high/70 backdrop-blur-md rounded-full subtle-paper-border shadow-sm">
-              <button
-                type="button"
-                onClick={() => setViewMode('spine')}
-                aria-label="Spine Shelf View"
-                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
-                  viewMode === 'spine'
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-                title="Spine Shelf View"
-              >
-                <span className="material-symbols-outlined text-[18px]">view_column</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                aria-label="Cover Grid View"
-                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-                title="Cover Grid View"
-              >
-                <span
-                  className="material-symbols-outlined text-[17px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  grid_view
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                aria-label="Compact List View"
-                className={`min-h-[44px] min-w-[36px] px-2 rounded-full flex items-center justify-center active:scale-95 transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-                title="Compact List View"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  format_list_bulleted
-                </span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Search & Sort & Filter Bar */}
-        <section className="relative z-10 px-5 md:px-8 py-3">
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-on-surface-variant/70">
-                <span className="material-symbols-outlined text-[19px]">search</span>
-              </span>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border rounded-xl font-body-ui text-label-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-surface-tint focus:border-surface-tint transition-all shadow-sm min-h-[44px]"
-                placeholder="Search title or author..."
-                type="text"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={cycleSort}
-              aria-label={`Sort by ${sortBy}`}
-              className="relative min-w-[44px] min-h-[44px] rounded-xl bg-surface-container-lowest/80 backdrop-blur-md subtle-paper-border flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-95 shadow-sm transition-all"
-              title={`Sort by ${sortBy}`}
-            >
-              <span className="material-symbols-outlined text-[19px]">swap_vert</span>
-            </button>
-          </div>
-        </section>
-
-        {/* Shelf Spines (Generated from all stored books, or skeleton while loading) */}
-        {viewMode !== 'list' && (loading || booksList.length > 0) && (
-          <section className="relative z-10 mt-2 px-5 md:px-8">
-            <div className="flex justify-between items-baseline mb-2.5">
-              <div className="flex items-center space-x-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                <h3 className="font-headline-sm text-headline-sm text-primary tracking-tight">
-                  Current Shelf
-                </h3>
-                <span className="font-body-ui text-caption text-on-surface-variant">
-                  · On The Desk
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={cycleSort}
-                aria-label="Arrange books on shelf"
-                className="text-caption font-body-ui-bold text-on-surface-variant hover:text-primary transition-colors flex items-center space-x-0.5 min-h-[44px] -my-2 px-2"
-              >
-                <span>Arrange</span>
-                <span className="material-symbols-outlined text-[14px]">tune</span>
-              </button>
-            </div>
-
-            <div className="relative bg-surface-container-low/70 rounded-2xl p-3 pb-0 subtle-paper-border shadow-sm overflow-hidden backdrop-blur-sm">
-              <div className="absolute inset-0 bg-gradient-to-b from-white/40 dark:from-white/[0.04] to-transparent pointer-events-none"></div>
-              <div className="flex items-end justify-start space-x-2 overflow-x-auto no-scrollbar pt-2 pb-1 relative z-10 px-1">
-                {loading ? (
-                  [165, 185, 150, 195, 175, 160].map((h, idx) => (
-                    <div
-                      key={idx}
-                      style={{ height: `${h}px` }}
-                      className="flex-shrink-0 w-11 rounded-t-[4px] bg-surface-container-high/60 animate-pulse border-l border-white/10"
-                    />
-                  ))
-                ) : (
-                  booksList.map((book) => (
-                    <ShelfSpine key={book.id} book={book} />
-                  ))
-                )}
-              </div>
-              {/* Shelf wooden ledge */}
-              <div className="h-3.5 -mx-3 bg-gradient-to-r from-[#d8cebe] via-[#e5dccf] to-[#d8cebe] dark:from-[#262F42] dark:via-[#2F3A52] dark:to-[#222B3C] border-t border-[#c5baaa] dark:border-white/10 flex items-center px-4 shadow-sm">
-                <div className="w-full h-[1px] bg-white/40 dark:bg-white/10"></div>
-              </div>
-              <div className="h-2 -mx-3 bg-gradient-to-b from-[#b8ab99]/60 to-[#a39482]/20 dark:from-black/40 dark:to-transparent"></div>
-            </div>
-          </section>
-        )}
-
-        {/* Main Book Feed & Filters */}
-        <section className="relative z-10 px-5 md:px-8 pt-6">
-          <div className="flex flex-col space-y-2.5 mb-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-headline-sm text-headline-sm text-primary tracking-tight">
-                All Books
-              </h3>
-              <span className="font-body-ui text-caption text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">
-                Vault • Local-first
-              </span>
-            </div>
-
-            {/* Filters: All / Reading / Finished / To read */}
-            <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {[
-                { id: 'all', label: `All (${counts.all})` },
-                { id: 'reading', label: `Reading (${counts.reading})` },
-                { id: 'finished', label: `Finished (${counts.finished})` },
-                { id: 'to-read', label: `To read (${counts.toRead})` },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveFilter(tab.id)}
-                  className={`min-h-[38px] px-3.5 py-1.5 rounded-full text-caption active:scale-95 transition-all shrink-0 flex items-center justify-center ${
-                    activeFilter === tab.id
-                      ? 'font-body-ui-bold bg-primary text-on-primary shadow-sm'
-                      : 'font-body-ui text-on-surface-variant bg-surface-container-lowest/90 subtle-paper-border hover:bg-surface-container'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Loading Skeleton */}
-          {loading && (
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 md:gap-x-5 gap-y-5 md:gap-y-7 animate-pulse">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-                <div key={i} className="flex flex-col space-y-2">
-                  <div className="aspect-[2/3] w-full rounded-md bg-surface-container-high" />
-                  <div className="h-3 w-3/4 bg-surface-container-high rounded" />
-                  <div className="h-2 w-1/2 bg-surface-container-high rounded" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Error State */}
-          {!loading && error && (
-            <div className="bg-surface-container-lowest/95 backdrop-blur-sm border border-error/20 rounded-[24px] p-8 text-center shadow-xs flex flex-col items-center justify-center my-8 max-w-md mx-auto">
-              <div className="w-14 h-14 rounded-full bg-error-container/40 text-error flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-[28px]">error</span>
-              </div>
-              <h3 className="font-headline-sm text-headline-sm text-primary font-medium mb-1">
-                Unable to load library
-              </h3>
-              <p className="font-body-ui text-caption text-on-surface-variant max-w-sm mb-6 leading-relaxed">
-                {error}
-              </p>
-              <button
-                type="button"
-                onClick={fetchVaultBooks}
-                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-on-primary font-body-ui font-medium text-sm flex items-center gap-2 shadow-xs hover:opacity-95 active:scale-[0.98] transition"
-              >
-                <span className="material-symbols-outlined text-[18px]">refresh</span>
-                <span>Retry</span>
-              </button>
-            </div>
-          )}
-
-          {/* Empty State when Library is empty */}
-          {!loading && !error && booksList.length === 0 && (
-            <div className="bg-surface-container-lowest/90 backdrop-blur-sm border border-black/[0.06] rounded-[24px] p-8 md:p-12 text-center shadow-xs flex flex-col items-center justify-center my-8">
-              <div className="w-16 h-16 rounded-full bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-[32px]">local_library</span>
-              </div>
-              <h3 className="font-headline-md text-headline-md text-primary font-medium mb-1">
-                Your library is empty
-              </h3>
-              <p className="font-body-ui text-body-ui text-on-surface-variant max-w-sm leading-relaxed mb-6">
-                Explore free public domain classics in The Commons or import your own EPUB files.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <Link
-                  href="/browse"
-                  className="min-h-[44px] w-full sm:w-auto px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md font-medium hover:opacity-90 active:scale-95 transition shadow-sm flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[18px]">explore</span>
-                  <span>Browse The Commons</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={openImportModal}
-                  className="min-h-[44px] w-full sm:w-auto px-5 py-2.5 rounded-full bg-surface-container border border-outline-variant/30 text-on-surface hover:bg-surface-container-high active:scale-95 transition text-label-md font-medium flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                  <span>Import EPUB</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* No search results empty state */}
-          {!loading && booksList.length > 0 && filteredBooks.length === 0 && (
-            <div className="p-8 text-center bg-surface-container-lowest/60 rounded-2xl border border-outline-variant/20 my-6">
-              <p className="text-sm text-on-surface font-medium mb-1">
-                No books match your criteria
-              </p>
-              <p className="text-xs text-on-surface-variant mb-4">
-                Try searching for a different title or resetting your filter.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setActiveFilter('all');
-                }}
-                className="px-4 py-1.5 rounded-full bg-surface-container text-xs font-semibold text-primary hover:bg-surface-container-high transition"
-              >
-                Reset Filters
-              </button>
-            </div>
-          )}
-
-          {/* List View Mode */}
-          {!loading && viewMode === 'list' && filteredBooks.length > 0 && (
-            <div className="space-y-2.5">
-              {filteredBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="bg-surface-container-lowest/90 border border-outline-variant/30 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group"
-                >
-                  <Link
-                    href={`/reader/${encodeURIComponent(book.id)}`}
-                    className="flex items-center gap-3 min-w-0 flex-1"
-                  >
-                    <div className="w-10 aspect-[2/3] shrink-0">
-                      <BookCoverItem book={book} />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-headline-sm text-[15px] text-primary font-medium truncate group-hover:underline">
-                        {book.title}
-                      </h4>
-                      <p className="font-caption text-caption text-on-surface-variant truncate">
-                        {book.author} · {book.year || 'Volume'}
-                      </p>
-                      {/* Progress Bar */}
-                      <div className="w-28 h-1 bg-surface-container-high rounded-full mt-1.5 overflow-hidden">
-                        <div
-                          className="h-full bg-secondary rounded-full"
-                          style={{ width: `${book.progressPercentage || 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  </Link>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {book.hasBinary === false && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-label-sm text-amber-600 dark:text-amber-400">
-                        <span className="material-symbols-outlined text-[12px]">cloud_off</span>
-                        <span>Not downloaded</span>
-                      </span>
-                    )}
-
-                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-caption font-label-sm text-primary">
-                      {book.progressPercentage === 100
-                        ? 'Done'
-                        : `${book.progressPercentage || 0}%`}
-                    </span>
-
-                    {/* Delete button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setBookToDelete(book);
-                      }}
-                      title="Delete book from vault"
-                      className="p-1.5 rounded-full text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 transition"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-
-                    <Link href={`/reader/${encodeURIComponent(book.id)}`}>
-                      <span className="material-symbols-outlined text-[18px] text-outline">
-                        chevron_right
-                      </span>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Grid View Mode */}
-          {!loading && viewMode !== 'list' && filteredBooks.length > 0 && (
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 md:gap-x-5 gap-y-5 md:gap-y-7">
-              {filteredBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="flex flex-col group relative transition-transform"
-                >
-                  {/* Delete button on hover */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setBookToDelete(book);
-                    }}
-                    title="Delete book"
-                    className="absolute top-1.5 right-1.5 z-20 w-6 h-6 rounded-full bg-black/75 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">delete</span>
-                  </button>
-
-                  <Link href={`/reader/${encodeURIComponent(book.id)}`} className="cursor-pointer active:scale-95 transition-transform">
-                    {book.hasBinary === false && (
-                      <div className="absolute top-1.5 left-1.5 z-20 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-amber-500/40 text-[9px] font-label-sm text-amber-300 shadow-sm pointer-events-none">
-                        <span className="material-symbols-outlined text-[11px]">cloud_off</span>
-                        <span>Not downloaded</span>
-                      </div>
-                    )}
-
-                    <BookCoverItem book={book} />
-
-                    <div className="mt-2 flex flex-col">
-                      <h4 className="font-headline-sm text-[13px] leading-tight text-on-surface line-clamp-1 group-hover:text-primary">
-                        {book.title}
-                      </h4>
-                      <p className="font-body-ui text-[10px] text-on-surface-variant uppercase tracking-wider mt-0.5 truncate">
-                        {book.author}
-                      </p>
-
-                      {/* Per-book progress bar using progressPercentage */}
-                      <div className="w-full h-1 bg-[#E2EBF1] dark:bg-surface-container-high rounded-full mt-1.5 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            book.progressPercentage === 100 ? 'bg-primary w-full' : 'bg-secondary'
-                          }`}
-                          style={
-                            book.progressPercentage === 100
-                              ? undefined
-                              : { width: `${book.progressPercentage || 0}%` }
-                          }
-                        />
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Footer Metrics */}
-          {booksList.length > 0 && (
-            <div className="mt-8 mb-4 flex items-center justify-center">
-              <Link
-                href="/stats"
-                className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-surface-container/60 backdrop-blur-md subtle-paper-border text-on-surface-variant hover:text-primary font-body-ui text-caption shadow-sm transition-colors"
-              >
-                <span className="material-symbols-outlined text-[14px]">auto_stories</span>
-                <span>
-                  {pluralize(totalBooksKept, 'book')} kept ·{' '}
-                  {pluralize(totalPagesRead, 'page')} read
-                </span>
-              </Link>
-            </div>
-          )}
-        </section>
-
-        {/* Delete Confirmation Modal */}
-        {bookToDelete && (
-          <div
-            onClick={() => setBookToDelete(null)}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-fade-in"
+    <div className="space-y-8 md:space-y-10">
+      {/* Editorial Page Header */}
+      <PageHeader
+        eyebrow="Collection"
+        title="Library"
+        description={
+          booksList.length > 0
+            ? `${pluralize(booksList.length, 'volume')} stored in your local sanctuary.`
+            : 'Your personal book collection is empty.'
+        }
+        action={
+          <Button
+            variant="primary"
+            onClick={openImportModal}
+            icon="add"
           >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-surface-container-lowest text-on-surface rounded-2xl border border-outline-variant/30 shadow-2xl p-5 space-y-4"
+            Import EPUB
+          </Button>
+        }
+      />
+
+      {/* Control Bar: Filters, Views, and Search */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2">
+        {/* Hairline Segmented Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented
+            options={[
+              { id: 'all', label: `All (${filterCounts.all})` },
+              { id: 'reading', label: `Reading (${filterCounts.reading})` },
+              { id: 'finished', label: `Finished (${filterCounts.finished})` },
+            ]}
+            value={activeFilter}
+            onChange={setActiveFilter}
+            size="md"
+          />
+
+          {/* View Mode Switcher */}
+          <Segmented
+            options={[
+              { id: 'shelf', icon: 'view_column', label: 'Shelf' },
+              { id: 'grid', icon: 'grid_view', label: 'Grid' },
+              { id: 'list', icon: 'format_list_bulleted', label: 'List' },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+            size="md"
+          />
+        </div>
+
+        {/* Search and Sort */}
+        <div className="flex items-center gap-3 flex-1 lg:max-w-md">
+          <div className="relative flex-1">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
+              <span className="material-symbols-outlined text-[19px] font-[300]">
+                search
+              </span>
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title or author…"
+              className="w-full min-h-[44px] pl-10 pr-4 py-2 text-[14px] font-sans rounded-full border border-hairline bg-surface text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors"
+            />
+          </div>
+
+          <Button
+            variant="secondary"
+            onClick={cycleSort}
+            icon="swap_vert"
+            className="shrink-0"
+            aria-label={`Sorted by ${sortLabel}. Click to change.`}
+          >
+            {sortLabel}
+          </Button>
+        </div>
+      </div>
+
+      {/* Loading Skeleton */}
+      {loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-pulse">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton variant="card" height="240px" />
+              <Skeleton variant="text" width="80%" />
+              <Skeleton variant="text" width="50%" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {!loading && error && (
+        <EmptyState
+          icon="error"
+          title="Library unavailable"
+          description={error}
+          action={
+            <Button variant="primary" onClick={loadLibrary}>
+              Retry
+            </Button>
+          }
+        />
+      )}
+
+      {/* Empty State when no books exist */}
+      {!loading && !error && booksList.length === 0 && (
+        <EmptyState
+          icon="auto_stories"
+          title="Your collection is empty"
+          description="Import an EPUB file from your device or browse curated public domain titles."
+          action={
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xs">
+              <Button
+                variant="primary"
+                onClick={() => router.push('/browse')}
+                icon="explore"
+                className="w-full sm:w-auto"
+              >
+                Browse The Commons
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={openImportModal}
+                icon="upload_file"
+                className="w-full sm:w-auto"
+              >
+                Import EPUB
+              </Button>
+            </div>
+          }
+        />
+      )}
+
+      {/* No Search Matches */}
+      {!loading && !error && booksList.length > 0 && filteredBooks.length === 0 && (
+        <Card className="p-8 text-center">
+          <p className="font-serif text-[18px] text-ink mb-2">
+            No matching volumes found
+          </p>
+          <p className="font-sans text-[14px] text-muted mb-4">
+            Try adjusting your search query or filter criteria.
+          </p>
+          <Button variant="secondary" onClick={() => { setSearchQuery(''); setActiveFilter('all'); }}>
+            Reset filters
+          </Button>
+        </Card>
+      )}
+
+      {/* 1. SHELF VIEW: Flat Spines on a Hairline Shelf Line */}
+      {!loading && !error && filteredBooks.length > 0 && viewMode === 'shelf' && (
+        <div className="space-y-4">
+          <div className="flex items-end gap-1.5 overflow-x-auto pb-1 pt-6 px-2 scrollbar-none">
+            {filteredBooks.map((book) => (
+              <FlatShelfSpine key={book.id} book={book} />
+            ))}
+          </div>
+          {/* Hairline Shelf Line (Spec: shelf line = hairline) */}
+          <div className="w-full border-b border-hairline" />
+        </div>
+      )}
+
+      {/* 2. GRID VIEW: Flat Cover Grid with Typographic Fallback & ProgressLine */}
+      {!loading && !error && filteredBooks.length > 0 && viewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {filteredBooks.map((book) => (
+            <Link
+              key={book.id}
+              href={`/reader/${encodeURIComponent(book.id)}`}
+              className="group flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-[10px]"
+              aria-label={`Read ${book.title} by ${book.author}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">delete_forever</span>
+              <Cover
+                src={book.coverUrl}
+                title={book.title}
+                author={book.author}
+                aspect="aspect-[2/3]"
+              />
+              <ProgressLine
+                value={book.progressPercentage || 0}
+                className="mt-3"
+              />
+              <h3 className="font-serif text-[15px] sm:text-[16.5px] text-ink font-normal leading-snug line-clamp-2 mt-2 group-hover:text-accent transition-colors">
+                {book.title}
+              </h3>
+              <span className="text-[10.5px] uppercase tracking-[0.12em] text-muted font-sans font-medium block mt-1 truncate">
+                {book.author || 'Unknown Author'}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* 3. LIST VIEW: Flat Hairline Rows */}
+      {!loading && !error && filteredBooks.length > 0 && viewMode === 'list' && (
+        <div className="border border-hairline rounded-[12px] bg-surface overflow-hidden divide-y divide-hairline">
+          {filteredBooks.map((book) => (
+            <Link
+              key={book.id}
+              href={`/reader/${encodeURIComponent(book.id)}`}
+              className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-hairline/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label={`Read ${book.title} by ${book.author}`}
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 aspect-[2/3] shrink-0">
+                  <Cover
+                    src={book.coverUrl}
+                    title={book.title}
+                    author={book.author}
+                    aspect="aspect-[2/3]"
+                  />
                 </div>
-                <div>
-                  <h3 className="font-headline-sm text-headline-sm text-primary">
-                    Delete Book?
+                <div className="min-w-0">
+                  <h3 className="font-serif text-[16px] text-ink font-normal leading-snug truncate">
+                    {book.title}
                   </h3>
-                  <p className="font-caption text-caption text-on-surface-variant">
-                    Remove from offline vault
+                  <p className="font-sans text-[13px] text-muted truncate mt-0.5">
+                    {book.author || 'Unknown Author'}
                   </p>
                 </div>
               </div>
 
-              <p className="font-body-ui text-on-surface-variant text-xs leading-relaxed">
-                Are you sure you want to delete{' '}
-                <span className="font-semibold text-primary">“{bookToDelete.title}”</span>? This
-                will remove its offline file, reading marks, and highlights from this device.
-              </p>
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setBookToDelete(null)}
-                  className="flex-1 py-2 px-3 rounded-xl bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface hover:bg-surface-container-high active:scale-95 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const b = bookToDelete;
-                    setBookToDelete(null);
-                    await deleteBook(b.id);
-                    setBooksList((prev) => prev.filter((item) => item.id !== b.id));
-                    showToast(`Deleted "${b.title}" from library`);
-                  }}
-                  className="flex-1 py-2 px-3 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-500 active:scale-95 transition shadow-sm"
-                >
-                  Delete
-                </button>
+              <div className="flex items-center gap-6 shrink-0">
+                <div className="w-24 hidden sm:block">
+                  <ProgressLine value={book.progressPercentage || 0} />
+                </div>
+                <span className="text-[12px] font-sans font-medium text-muted tabular-nums">
+                  {book.progressPercentage || 0}%
+                </span>
+                <span className="material-symbols-outlined text-[18px] text-muted group-hover:text-ink transition-colors">
+                  arrow_forward
+                </span>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Add Book Button */}
-        <div className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-40">
-          <button
-            type="button"
-            onClick={openImportModal}
-            className="w-12 h-12 rounded-full bg-primary-container text-on-primary shadow-lg shadow-primary/20 flex items-center justify-center hover:bg-primary active:scale-95 transition-all subtle-paper-border"
-            title="Add Book (.epub, .txt)"
-          >
-            <span className="material-symbols-outlined text-[24px]">add</span>
-          </button>
+            </Link>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

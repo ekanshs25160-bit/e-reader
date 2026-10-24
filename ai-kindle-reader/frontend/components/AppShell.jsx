@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 
 // One nav for every screen size. `mobile: true` items appear in the bottom bar;
-// every item appears in the side rail (tablet) and sidebar (laptop+).
+// every item appears in the side rail (tablet) and sidebar (desktop).
 const NAV = [
   { href: '/', label: 'Home', icon: 'home', mobile: true },
   { href: '/library', label: 'Library', icon: 'auto_stories', mobile: true },
@@ -21,44 +21,38 @@ function isActive(pathname, href) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
-  const { isNight, toggleDayNight, userName, userAvatar } = useTheme();
+  const { isNight, toggleDayNight, userName } = useTheme();
 
   return (
-    <div className={`min-h-dvh ${isNight ? 'dark bg-[#141824] text-[#F3F1EC]' : 'bg-background text-on-surface'}`}>
-      {/* Side rail (md) → full sidebar (lg+) */}
-      <aside
-        className={`hidden md:flex fixed inset-y-0 left-0 z-40 w-20 lg:w-64 flex-col border-r backdrop-blur-md transition-colors ${
-          isNight
-            ? 'border-white/[0.08] bg-[#181E2C]/90 text-[#F3F1EC]'
-            : 'border-outline-variant/40 bg-surface-container-low/80'
-        }`}
-      >
-        <div className="flex h-16 items-center justify-center lg:justify-between lg:px-6">
+    <div className="min-h-dvh bg-background text-ink font-sans antialiased selection:bg-accent/20 selection:text-ink">
+      {/* Side rail (md: tablet) → full sidebar (lg+: desktop) */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-20 lg:w-64 flex-col border-r border-hairline bg-surface transition-colors">
+        {/* Brand Header */}
+        <div className="flex h-16 items-center justify-center lg:justify-between px-4 lg:px-6 border-b border-hairline">
           <Link
             href="/"
-            className={`font-headline-md text-headline-md ${isNight ? 'text-[#F3F1EC]' : 'text-primary'}`}
+            className="flex items-center gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
           >
-            <span className="lg:hidden">F</span>
-            <span className="hidden lg:inline">Flyleaf</span>
+            <span className="font-serif text-[24px] lg:text-[26px] font-normal text-ink tracking-tight">
+              <span className="lg:hidden">F</span>
+              <span className="hidden lg:inline">Flyleaf</span>
+            </span>
           </Link>
           <button
             type="button"
             onClick={toggleDayNight}
             title={isNight ? 'Switch to Paper Day' : 'Switch to Night Sanctuary'}
-            aria-label="Toggle Day/Night Theme"
-            className={`hidden lg:flex w-8 h-8 rounded-full items-center justify-center transition-colors ${
-              isNight
-                ? 'bg-white/10 text-[#D8A868] hover:bg-white/20'
-                : 'bg-surface-container-high/70 text-primary hover:bg-surface-container-highest'
-            }`}
+            aria-label="Toggle Day and Night Theme"
+            className="hidden lg:flex w-9 h-9 rounded-full items-center justify-center text-muted hover:text-ink hover:bg-hairline/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span className="material-symbols-outlined text-[20px] font-[300]">
               {isNight ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
         </div>
 
-        <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 px-3 py-2">
+        {/* Navigation Items */}
+        <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 py-4">
           {NAV.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -66,51 +60,51 @@ export default function AppShell({ children }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={
-                  'flex items-center justify-center gap-3 rounded-xl px-3 py-3 transition-colors lg:justify-start ' +
-                  (active
-                    ? isNight
-                      ? 'bg-[#2B384E] text-[#D8A868] shadow-sm'
-                      : 'bg-primary-container text-on-primary shadow-sm'
-                    : isNight
-                      ? 'text-[#8E9BAE] hover:bg-white/5 hover:text-[#F3F1EC]'
-                      : 'text-on-surface-variant hover:bg-surface-container-high/60')
-                }
+                className={`relative flex items-center justify-center lg:justify-start gap-3.5 px-4 lg:px-6 py-3 min-h-[44px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  active
+                    ? 'text-ink font-medium'
+                    : 'text-muted hover:text-ink font-normal'
+                }`}
               >
-                <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
-                <span className="hidden lg:inline font-body-ui-bold text-body-ui-bold">{item.label}</span>
+                {/* 2px Bronze Marker for Active item (no filled pill) */}
+                {active && (
+                  <span
+                    className="absolute left-0 inset-y-2 w-[2px] bg-accent rounded-r"
+                    aria-hidden="true"
+                  />
+                )}
+                <span
+                  className={`material-symbols-outlined text-[22px] font-[300] transition-colors ${
+                    active ? 'text-ink' : 'text-muted'
+                  }`}
+                >
+                  {item.icon}
+                </span>
+                <span className="hidden lg:inline font-sans text-[14.5px] tracking-normal">
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* User profile at the bottom of sidebar */}
-        <div
-          className={`border-t p-3 lg:px-4 flex items-center justify-center lg:justify-between gap-2 ${
-            isNight ? 'border-white/[0.08]' : 'border-outline-variant/30'
-          }`}
-        >
+        {/* User Monogram at Bottom of Sidebar */}
+        <div className="border-t border-hairline p-3 lg:px-6 flex items-center justify-center lg:justify-between gap-3">
           <Link
             href="/settings"
-            className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-3 min-w-0 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            aria-label="Settings and user profile"
           >
-            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30 shadow-xs shrink-0 bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
-              {userAvatar ? (
-                <img
-                  alt={userName}
-                  className="w-full h-full object-cover"
-                  src={userAvatar}
-                />
-              ) : (
-                <span>{(userName || 'R').slice(0, 2).toUpperCase()}</span>
-              )}
+            {/* Ink-outline Monogram */}
+            <div className="w-8 h-8 rounded-full border border-hairline bg-surface text-ink flex items-center justify-center font-serif text-[13px] shrink-0 group-hover:border-ink transition-colors">
+              <span>{(userName || 'R').slice(0, 2).toUpperCase()}</span>
             </div>
             <div className="hidden lg:flex flex-col min-w-0">
-              <span className={`font-body-ui-bold text-[13px] truncate ${isNight ? 'text-[#F3F1EC]' : 'text-primary'}`}>
-                {userName}
+              <span className="font-sans text-[13.5px] font-medium text-ink truncate">
+                {userName || 'Reader'}
               </span>
-              <span className={`font-caption text-[11px] truncate ${isNight ? 'text-[#8E9BAE]' : 'text-on-surface-variant'}`}>
-                Reader · Settings
+              <span className="font-sans text-[10.5px] uppercase tracking-[0.12em] text-muted truncate">
+                Desk Settings
               </span>
             </div>
           </Link>
@@ -118,37 +112,29 @@ export default function AppShell({ children }) {
             type="button"
             onClick={toggleDayNight}
             title={isNight ? 'Switch to Paper Day' : 'Switch to Night Sanctuary'}
-            aria-label="Toggle Day/Night Theme"
-            className={`lg:hidden w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-              isNight
-                ? 'bg-white/10 text-[#D8A868]'
-                : 'bg-surface-container-high/70 text-primary'
-            }`}
+            aria-label="Toggle theme"
+            className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <span className="material-symbols-outlined text-[17px]">
+            <span className="material-symbols-outlined text-[18px] font-[300]">
               {isNight ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
         </div>
       </aside>
 
-      {/* Content: full-bleed on phones, centred column on bigger screens */}
-      <main className="md:pl-20 lg:pl-64 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
-        <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-6xl">{children}</div>
+      {/* Content Canvas */}
+      <main className="md:pl-20 lg:pl-64 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-12 min-h-dvh">
+        <div className="mx-auto w-full max-w-72rem px-4 sm:px-6 md:px-8 lg:px-12 py-4 md:py-8">
+          {children}
+        </div>
       </main>
 
-      {/* Bottom bar (phones only) */}
+      {/* Bottom Navigation Bar (Phones Only) */}
       <nav
-        aria-label="Primary"
-        className="md:hidden fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] pointer-events-none"
+        aria-label="Primary mobile"
+        className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-surface/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
       >
-        <div
-          className={`pointer-events-auto flex w-full max-w-md items-center justify-between rounded-full border px-2 py-1.5 mb-2 shadow-lg backdrop-blur-md ${
-            isNight
-              ? 'border-white/[0.08] bg-[#181E2C]/95 text-[#F3F1EC]'
-              : 'border-black/5 bg-surface-container-lowest/90 text-on-surface'
-          }`}
-        >
+        <div className="flex h-14 items-center justify-around px-2">
           {NAV.filter((n) => n.mobile).map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -157,19 +143,27 @@ export default function AppShell({ children }) {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 aria-label={item.label}
-                className={
-                  'flex flex-1 flex-col items-center justify-center min-h-[44px] gap-0.5 rounded-full py-1 ' +
-                  (active
-                    ? isNight
-                      ? 'bg-[#2B384E] text-[#D8A868]'
-                      : 'bg-primary-container text-on-primary'
-                    : isNight
-                      ? 'text-[#8E9BAE]'
-                      : 'text-on-surface-variant')
-                }
+                className={`flex flex-1 flex-col items-center justify-center min-h-[44px] min-w-[44px] relative py-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  active ? 'text-ink' : 'text-muted'
+                }`}
               >
-                <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
-                <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+                <span
+                  className={`material-symbols-outlined text-[22px] font-[300] transition-colors ${
+                    active ? 'text-ink' : 'text-muted'
+                  }`}
+                >
+                  {item.icon}
+                </span>
+                <span className="text-[10px] font-sans font-medium tracking-wide">
+                  {item.label}
+                </span>
+                {/* Small bronze dot when active */}
+                {active && (
+                  <span
+                    className="w-1 h-1 rounded-full bg-accent mt-0.5"
+                    aria-hidden="true"
+                  />
+                )}
               </Link>
             );
           })}

@@ -8,6 +8,8 @@ import { settingsStore } from '@/utils/db';
 
 const ThemeContext = createContext({
   themeMode: 'day',
+  palette: 'paper',
+  setPalette: () => {},
   setThemeMode: () => {},
   toggleDayNight: () => {},
   isNight: false,
@@ -23,7 +25,7 @@ const ThemeContext = createContext({
 
 export function ThemeProvider({ children }) {
   const pathname = usePathname();
-  const [themeMode, setThemeModeState] = useState('day'); // 'auto' | 'day' | 'night'
+  const [themeMode, setThemeModeState] = useState('paper'); // 'auto' | 'paper' | 'sepia' | 'night' | 'oled' | 'day'
   const [systemDark, setSystemDark] = useState(false);
   const [userName, setUserNameState] = useState('Reader');
   const [userAvatar, setUserAvatarState] = useState(null);
@@ -36,7 +38,14 @@ export function ThemeProvider({ children }) {
     // 1. Initial synchronous check from localStorage
     try {
       const savedTheme = localStorage.getItem('flyleaf-theme');
-      if (savedTheme === 'auto' || savedTheme === 'day' || savedTheme === 'night') {
+      if (
+        savedTheme === 'auto' ||
+        savedTheme === 'day' ||
+        savedTheme === 'night' ||
+        savedTheme === 'paper' ||
+        savedTheme === 'sepia' ||
+        savedTheme === 'oled'
+      ) {
         setThemeModeState(savedTheme);
       }
       const savedName = localStorage.getItem('flyleaf-user-name');
@@ -89,31 +98,54 @@ export function ThemeProvider({ children }) {
     };
   }, []);
 
-  const isNight =
-    themeMode === 'night' ||
-    (themeMode === 'auto' && systemDark);
+  const resolvedPalette =
+    themeMode === 'auto'
+      ? (systemDark ? 'night' : 'paper')
+      : themeMode === 'day'
+      ? 'paper'
+      : themeMode; // 'paper' | 'sepia' | 'night' | 'oled'
+
+  const isNight = resolvedPalette === 'night' || resolvedPalette === 'oled';
 
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', isNight);
-    }
-  }, [isNight]);
+    if (typeof document === 'undefined') return;
+    const el = document.documentElement;
+    el.classList.remove('dark', 'night', 'sepia', 'oled', 'paper');
 
-  const setThemeMode = useCallback((mode) => {
-    setThemeModeState(mode);
+    if (resolvedPalette === 'night') {
+      el.classList.add('dark', 'night');
+      el.setAttribute('data-theme', 'night');
+    } else if (resolvedPalette === 'oled') {
+      el.classList.add('dark', 'oled');
+      el.setAttribute('data-theme', 'oled');
+    } else if (resolvedPalette === 'sepia') {
+      el.classList.add('sepia');
+      el.setAttribute('data-theme', 'sepia');
+    } else {
+      el.classList.add('paper');
+      el.setAttribute('data-theme', 'paper');
+    }
+  }, [resolvedPalette]);
+
+  const setPalette = useCallback((p) => {
+    setThemeModeState(p);
     try {
-      localStorage.setItem('flyleaf-theme', mode);
+      localStorage.setItem('flyleaf-theme', p);
     } catch {}
     if (settingsStore) {
       settingsStore.getItem('reader_settings').then((cur) => {
-        settingsStore.setItem('reader_settings', { ...(cur || {}), themeMode: mode });
+        settingsStore.setItem('reader_settings', { ...(cur || {}), themeMode: p, palette: p });
       }).catch(() => {});
     }
   }, []);
 
+  const setThemeMode = useCallback((mode) => {
+    setPalette(mode);
+  }, [setPalette]);
+
   const toggleDayNight = useCallback(() => {
-    setThemeMode(isNight ? 'day' : 'night');
-  }, [isNight, setThemeMode]);
+    setPalette(isNight ? 'paper' : 'night');
+  }, [isNight, setPalette]);
 
   const setUserName = useCallback((name) => {
     const trimmed = (name || '').trim() || 'Reader';
@@ -169,6 +201,8 @@ export function ThemeProvider({ children }) {
     <ThemeContext.Provider
       value={{
         themeMode,
+        palette: resolvedPalette,
+        setPalette,
         setThemeMode,
         toggleDayNight,
         isNight,

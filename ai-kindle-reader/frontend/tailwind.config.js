@@ -54,12 +54,23 @@ module.exports = {
         "tertiary": "rgb(var(--c-tertiary) / <alpha-value>)",
         "tertiary-container": "rgb(var(--c-tertiary-container) / <alpha-value>)",
         "tertiary-fixed": "rgb(var(--c-tertiary-fixed) / <alpha-value>)",
-        "tertiary-fixed-dim": "rgb(var(--c-tertiary-fixed-dim) / <alpha-value>)"
+        "tertiary-fixed-dim": "rgb(var(--c-tertiary-fixed-dim) / <alpha-value>)",
+        "ink": "var(--theme-ink)",
+        "muted": "var(--theme-muted)",
+        "hairline": "var(--theme-hairline)",
+        "accent": "var(--theme-accent)",
+        "contrast": "var(--theme-contrast)",
+        "semantic-error": "var(--theme-error)",
+        "semantic-success": "var(--theme-success)"
       },
       "borderRadius": {
         "DEFAULT": "0.25rem",
         "lg": "0.5rem",
         "xl": "0.75rem",
+        "card": "12px",
+        "control": "12px",
+        "panel": "24px",
+        "sheet": "24px",
         "full": "9999px"
       },
       "spacing": {
@@ -86,6 +97,21 @@ module.exports = {
         "62": "15.5rem"
       },
       "fontFamily": {
+        "serif": [
+          "Newsreader Variable",
+          "Newsreader",
+          "Literata Variable",
+          "Literata",
+          "Georgia",
+          "serif"
+        ],
+        "sans": [
+          "Inter Variable",
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "sans-serif"
+        ],
         "body-reading": [
           "Literata Variable",
           "Literata",

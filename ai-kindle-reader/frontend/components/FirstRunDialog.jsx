@@ -3,18 +3,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
-import { saveSettings, getSettings } from '@/utils/db';
+import { getSettings, saveSettings } from '@/utils/db';
 
+/**
+ * FirstRunDialog
+ * Floating modal presented on first run asking for an optional display name.
+ * Strictly adheres to Flyleaf Editorial Spec (flat overlay, 24px radius, hairline border, soft shadow, serif initials).
+ */
 export default function FirstRunDialog() {
   const pathname = usePathname();
-  const { userName, setUserName } = useTheme();
+  const { userName, updateSettings } = useTheme();
+
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const inputRef = useRef(null);
 
   useEffect(() => {
     let active = true;
-    if (pathname?.startsWith('/reader')) return;
 
     const checkFirstRun = async () => {
       try {
@@ -61,22 +66,22 @@ export default function FirstRunDialog() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const handleComplete = async (submittedName) => {
-    const trimmed = (submittedName || '').trim();
-    const finalName = trimmed || 'Reader';
-
+  const handleComplete = async (nameToSave) => {
+    const finalName = (nameToSave || '').trim() || 'Reader';
     try {
       localStorage.setItem('flyleaf_first_run_completed', 'true');
-      if (trimmed) {
-        setUserName(trimmed);
-      }
+      localStorage.setItem('flyleaf_user_name', finalName);
+
+      const existing = (await getSettings()) || {};
       await saveSettings({
-        displayName: trimmed,
-        name: finalName,
+        ...existing,
+        userName: finalName,
         firstRunCompleted: true,
       });
-    } catch (err) {
-      console.error('[Flyleaf] Failed to save first run settings:', err);
+
+      if (updateSettings) {
+        updateSettings({ userName: finalName });
+      }
     } finally {
       setIsOpen(false);
     }
@@ -88,30 +93,31 @@ export default function FirstRunDialog() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="first-run-title"
+      data-overlay="dialog"
     >
-      <div className="w-full max-w-md bg-surface-container-lowest dark:bg-surface-container rounded-3xl p-6 sm:p-8 shadow-2xl border border-outline-variant/30 text-on-surface relative">
+      <div className="w-full max-w-md bg-surface border border-hairline rounded-[24px] p-6 sm:p-8 shadow-[0_12px_36px_rgba(0,0,0,0.08)] text-ink relative">
         <div className="flex flex-col items-center text-center">
-          {/* Initials Avatar - No fake image, strictly initials */}
+          {/* Initials Avatar - Ink-outline Monogram */}
           <div
-            className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-xl font-bold shadow-sm ring-4 ring-surface-container-lowest dark:ring-surface-container-high mb-4"
+            className="w-14 h-14 rounded-full border border-hairline bg-surface text-ink flex items-center justify-center font-serif text-xl font-normal mb-4"
             aria-hidden="true"
           >
             {getInitials(displayName)}
           </div>
 
-          <span className="font-label-sm text-[11px] tracking-widest text-secondary font-semibold uppercase mb-1">
+          <span className="font-sans text-[10.5px] uppercase tracking-[0.12em] text-muted font-medium mb-1.5">
             Welcome to Flyleaf
           </span>
 
           <h2
             id="first-run-title"
-            className="font-headline-md text-headline-md text-primary font-medium tracking-tight mb-2"
+            className="font-serif text-[24px] font-normal text-ink tracking-tight mb-2"
           >
             Your reading sanctuary
           </h2>
 
-          <p className="font-body-ui text-[13px] text-on-surface-variant max-w-xs mb-6 leading-relaxed">
-            Choose a display name for your reading notes and journal. This is optional and saved only on this device.
+          <p className="font-sans text-[13.5px] text-muted max-w-xs mb-6 leading-relaxed">
+            Choose a display name for your reading notes and journal. Stored on this device. Synced only if you sign in.
           </p>
 
           <form
@@ -124,7 +130,7 @@ export default function FirstRunDialog() {
             <div>
               <label
                 htmlFor="display-name-input"
-                className="block font-label-sm text-xs font-medium text-on-surface-variant mb-1.5"
+                className="block font-sans text-[11px] uppercase tracking-[0.12em] text-muted font-medium mb-1.5"
               >
                 Display name (optional)
               </label>
@@ -136,21 +142,21 @@ export default function FirstRunDialog() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="e.g. Maya Angelou"
                 maxLength={40}
-                className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-surface-container-low/70 dark:bg-surface-container-high/40 border border-outline-variant/40 text-on-surface font-body-ui text-sm focus:outline-none focus:ring-2 focus:ring-primary/60 transition"
+                className="w-full min-h-[44px] px-4 py-2.5 rounded-[12px] bg-surface border border-hairline text-ink font-sans text-[14px] placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
               />
             </div>
 
             <div className="flex flex-col sm:flex-row-reverse gap-2.5 pt-2">
               <button
                 type="submit"
-                className="min-h-[44px] w-full sm:flex-1 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-body-ui font-medium text-sm hover:opacity-95 active:scale-[0.98] transition flex items-center justify-center shadow-xs"
+                className="min-h-[44px] w-full sm:flex-1 px-5 py-2.5 rounded-full bg-ink text-background font-sans font-medium text-[14px] hover:opacity-90 active:scale-[0.98] transition flex items-center justify-center"
               >
                 {displayName.trim() ? 'Save & Start Reading' : 'Start Reading'}
               </button>
               <button
                 type="button"
                 onClick={() => handleComplete('')}
-                className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high/40 font-body-ui text-sm transition flex items-center justify-center"
+                className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-full text-muted hover:text-ink hover:bg-hairline/20 font-sans font-medium text-[14px] transition flex items-center justify-center"
               >
                 Skip for now
               </button>

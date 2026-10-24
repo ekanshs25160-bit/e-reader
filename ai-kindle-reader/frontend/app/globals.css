@@ -7,14 +7,14 @@
 
 @font-face {
   font-family: 'OpenDyslexic';
-  src: url('https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.0.21/files/opendyslexic-latin-400-normal.woff2') format('woff2');
+  src: local('OpenDyslexic'), local('OpenDyslexic-Regular');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'OpenDyslexic';
-  src: url('https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5.0.21/files/opendyslexic-latin-700-normal.woff2') format('woff2');
+  src: local('OpenDyslexic-Bold'), local('OpenDyslexic');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -24,14 +24,182 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{--c-background:250 249 246;--c-error:186 26 26;--c-error-container:255 218 214;--c-inverse-on-surface:242 241 238;--c-inverse-primary:179 200 230;--c-inverse-surface:47 49 47;--c-on-background:26 28 26;--c-on-error:255 255 255;--c-on-error-container:147 0 10;--c-on-primary:255 255 255;--c-on-primary-container:151 172 200;--c-on-primary-fixed:5 29 51;--c-on-primary-fixed-variant:52 72 96;--c-on-secondary:255 255 255;--c-on-secondary-container:122 73 27;--c-on-secondary-fixed:46 21 0;--c-on-secondary-fixed-variant:105 59 15;--c-on-surface:26 28 26;--c-on-surface-variant:67 71 77;--c-on-tertiary:255 255 255;--c-on-tertiary-container:142 174 196;--c-on-tertiary-fixed:0 30 45;--c-on-tertiary-fixed-variant:43 74 93;--c-outline:116 119 126;--c-outline-variant:196 198 205;--c-primary:21 42 65;--c-primary-container:44 64 88;--c-primary-fixed:210 228 255;--c-primary-fixed-dim:179 200 230;--c-secondary:133 82 36;--c-secondary-container:255 187 132;--c-secondary-fixed:255 220 195;--c-secondary-fixed-dim:252 184 129;--c-surface:250 249 246;--c-surface-bright:250 249 246;--c-surface-container:239 238 235;--c-surface-container-high:233 232 229;--c-surface-container-highest:227 226 223;--c-surface-container-low:244 243 240;--c-surface-container-lowest:255 255 255;--c-surface-dim:219 218 215;--c-surface-tint:76 96 121;--c-surface-variant:227 226 223;--c-tertiary:7 44 62;--c-tertiary-container:34 66 85;--c-tertiary-fixed:198 231 254;--c-tertiary-fixed-dim:170 203 226}
-.dark{--c-background:20 24 36;--c-error:224 108 117;--c-error-container:255 218 214;--c-inverse-on-surface:20 24 36;--c-inverse-primary:21 42 65;--c-inverse-surface:250 249 246;--c-on-background:243 241 236;--c-on-error:255 255 255;--c-on-error-container:147 0 10;--c-on-primary:20 24 36;--c-on-primary-container:154 164 178;--c-on-primary-fixed:5 29 51;--c-on-primary-fixed-variant:52 72 96;--c-on-secondary:20 24 36;--c-on-secondary-container:243 241 236;--c-on-secondary-fixed:46 21 0;--c-on-secondary-fixed-variant:105 59 15;--c-on-surface:243 241 236;--c-on-surface-variant:154 164 178;--c-on-tertiary:255 255 255;--c-on-tertiary-container:142 174 196;--c-on-tertiary-fixed:0 30 45;--c-on-tertiary-fixed-variant:43 74 93;--c-outline:53 56 67;--c-outline-variant:39 42 54;--c-primary:243 241 236;--c-primary-container:36 44 61;--c-primary-fixed:210 228 255;--c-primary-fixed-dim:179 200 230;--c-secondary:226 177 112;--c-secondary-container:216 168 104;--c-secondary-fixed:255 220 195;--c-secondary-fixed-dim:252 184 129;--c-surface:20 24 36;--c-surface-bright:34 41 56;--c-surface-container:28 34 48;--c-surface-container-high:35 42 59;--c-surface-container-highest:40 49 68;--c-surface-container-low:24 30 44;--c-surface-container-lowest:18 21 32;--c-surface-dim:16 19 29;--c-surface-tint:127 169 140;--c-surface-variant:35 42 59;--c-tertiary:127 169 140;--c-tertiary-container:34 66 85;--c-tertiary-fixed:198 231 254;--c-tertiary-fixed-dim:170 203 226}
+/* =========================================================================
+   Flyleaf Editorial Design System — Palettes (Paper, Sepia, Night, OLED)
+   ========================================================================= */
+
+:root,
+.paper,
+[data-theme="paper"] {
+  --theme-bg: #FAF9F6;
+  --theme-surface: #FAF9F6;
+  --theme-ink: #152A41;
+  --theme-muted: #43474D;
+  --theme-hairline: rgba(21, 42, 65, 0.12);
+  --theme-accent: #855224;
+  --theme-contrast: #FAF9F6;
+  --theme-success: #2A6B48;
+  --theme-error: #9E3535;
+
+  /* Tailwind RGB Channels */
+  --c-background: 250 249 246;
+  --c-surface: 250 249 246;
+  --c-surface-bright: 250 249 246;
+  --c-surface-container: 244 243 240;
+  --c-surface-container-high: 239 238 235;
+  --c-surface-container-highest: 233 232 229;
+  --c-surface-container-low: 248 247 244;
+  --c-surface-container-lowest: 255 255 255;
+  --c-surface-dim: 230 228 223;
+  --c-surface-variant: 239 238 235;
+  --c-primary: 21 42 65;
+  --c-primary-container: 21 42 65;
+  --c-on-primary: 250 249 246;
+  --c-on-primary-container: 250 249 246;
+  --c-on-surface: 21 42 65;
+  --c-on-surface-variant: 67 71 77;
+  --c-outline: 21 42 65;
+  --c-outline-variant: 21 42 65;
+  --c-secondary: 133 82 36;
+  --c-secondary-container: 244 236 216;
+  --c-on-secondary-container: 133 82 36;
+  --c-error: 158 53 53;
+  --c-error-container: 255 218 214;
+}
+
+.sepia,
+[data-theme="sepia"] {
+  --theme-bg: #F4ECD8;
+  --theme-surface: #F4ECD8;
+  --theme-ink: #2C2214;
+  --theme-muted: #5B472C;
+  --theme-hairline: rgba(44, 34, 20, 0.12);
+  --theme-accent: #7A491B;
+  --theme-contrast: #F4ECD8;
+  --theme-success: #2B613D;
+  --theme-error: #9A3828;
+
+  /* Tailwind RGB Channels */
+  --c-background: 244 236 216;
+  --c-surface: 244 236 216;
+  --c-surface-bright: 244 236 216;
+  --c-surface-container: 239 230 208;
+  --c-surface-container-high: 233 223 199;
+  --c-surface-container-highest: 227 216 190;
+  --c-surface-container-low: 247 240 223;
+  --c-surface-container-lowest: 252 247 236;
+  --c-surface-dim: 223 212 186;
+  --c-surface-variant: 233 223 199;
+  --c-primary: 44 34 20;
+  --c-primary-container: 44 34 20;
+  --c-on-primary: 244 236 216;
+  --c-on-primary-container: 244 236 216;
+  --c-on-surface: 44 34 20;
+  --c-on-surface-variant: 91 71 44;
+  --c-outline: 44 34 20;
+  --c-outline-variant: 44 34 20;
+  --c-secondary: 122 73 27;
+  --c-secondary-container: 233 223 199;
+  --c-on-secondary-container: 122 73 27;
+  --c-error: 154 56 40;
+  --c-error-container: 247 210 200;
+}
+
+.dark,
+.night,
+[data-theme="night"] {
+  --theme-bg: #141824;
+  --theme-surface: #141824;
+  --theme-ink: #F0F2F5;
+  --theme-muted: #A0AEC0;
+  --theme-hairline: rgba(240, 242, 245, 0.12);
+  --theme-accent: #E2B170;
+  --theme-contrast: #141824;
+  --theme-success: #4E9A68;
+  --theme-error: #D05D5D;
+
+  /* Tailwind RGB Channels */
+  --c-background: 20 24 36;
+  --c-surface: 20 24 36;
+  --c-surface-bright: 34 41 56;
+  --c-surface-container: 28 34 48;
+  --c-surface-container-high: 35 42 59;
+  --c-surface-container-highest: 40 49 68;
+  --c-surface-container-low: 24 30 44;
+  --c-surface-container-lowest: 18 21 32;
+  --c-surface-dim: 16 19 29;
+  --c-surface-variant: 35 42 59;
+  --c-primary: 240 242 245;
+  --c-primary-container: 36 44 61;
+  --c-on-primary: 20 24 36;
+  --c-on-primary-container: 240 242 245;
+  --c-on-surface: 240 242 245;
+  --c-on-surface-variant: 160 174 192;
+  --c-outline: 240 242 245;
+  --c-outline-variant: 240 242 245;
+  --c-secondary: 226 177 112;
+  --c-secondary-container: 36 44 61;
+  --c-on-secondary-container: 226 177 112;
+  --c-error: 208 93 93;
+  --c-error-container: 60 25 25;
+}
+
+.oled,
+[data-theme="oled"] {
+  --theme-bg: #000000;
+  --theme-surface: #000000;
+  --theme-ink: #EDEDED;
+  --theme-muted: #A0A0A0;
+  --theme-hairline: rgba(237, 237, 237, 0.12);
+  --theme-accent: #E2B170;
+  --theme-contrast: #000000;
+  --theme-success: #4E9A68;
+  --theme-error: #D05D5D;
+
+  /* Tailwind RGB Channels */
+  --c-background: 0 0 0;
+  --c-surface: 0 0 0;
+  --c-surface-bright: 18 18 18;
+  --c-surface-container: 12 12 12;
+  --c-surface-container-high: 22 22 22;
+  --c-surface-container-highest: 30 30 30;
+  --c-surface-container-low: 8 8 8;
+  --c-surface-container-lowest: 0 0 0;
+  --c-surface-dim: 6 6 6;
+  --c-surface-variant: 20 20 20;
+  --c-primary: 237 237 237;
+  --c-primary-container: 24 24 24;
+  --c-on-primary: 0 0 0;
+  --c-on-primary-container: 237 237 237;
+  --c-on-surface: 237 237 237;
+  --c-on-surface-variant: 160 160 160;
+  --c-outline: 237 237 237;
+  --c-outline-variant: 237 237 237;
+  --c-secondary: 226 177 112;
+  --c-secondary-container: 24 24 24;
+  --c-on-secondary-container: 226 177 112;
+  --c-error: 208 93 93;
+  --c-error-container: 45 15 15;
+}
 
 html { -webkit-text-size-adjust: 100%; }
-body { background: rgb(var(--c-background)); color: rgb(var(--c-on-surface)); }
+body { background: var(--theme-bg); color: var(--theme-ink); }
 
-/* --- shared rules lifted from the Stitch pages --- */
-.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; display: inline-block; vertical-align: middle; line-height: 1; }
+/* --- Material Symbols Outlined (weight 300, quiet default) --- */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+:where(.material-symbols-outlined) {
+  color: var(--theme-muted);
+}
+.material-symbols-outlined.active,
+.material-symbols-outlined.fill-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  color: var(--theme-ink);
+}
 .vertical-rl { writing-mode: vertical-rl; text-orientation: mixed; }
 .spine-emboss { text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
 .soft-editorial-shadow { box-shadow: 0 2px 8px rgba(44, 64, 88, 0.04), 0 12px 28px rgba(44, 64, 88, 0.06); }
