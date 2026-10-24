@@ -149,14 +149,15 @@ function ReaderContent() {
   const endOfChapterTimerRef = useRef(null);
   const lastSeenEndOfChapterKeyRef = useRef("");
 
-  // Reader appearance & typography settings (responsive defaults: 18/19/20px, line-height 1.6, align auto)
+  // Reader appearance & typography settings (responsive defaults: 18/19/20px, line-height 1.75, typeface literata)
   const [readerSettings, setReaderSettings] = useState({
     palette: "paper",
     fontSize: null,
     typeface: "literata",
     align: "auto",
-    lineHeight: "1.6",
+    lineHeight: "1.75",
     margins: "normal",
+    spread: "auto",
   });
 
   // Bookmarks and Highlights
@@ -351,16 +352,18 @@ function ReaderContent() {
             ...savedSettings,
           }));
         } else {
-          // Defaults for new users: 18px on phone, 19px on tablet, 20px on desktop; line height 1.6; align auto
+          // Defaults for new users: 18px on phone, 19px on tablet, 20px on desktop; line height 1.75; align auto; typeface literata
           const w = typeof window !== "undefined" ? window.innerWidth : 1024;
           const defSize = w < 768 ? 18 : w < 1024 ? 19 : 20;
           setReaderSettings((prev) => ({
             ...prev,
             fontSize: defSize,
-            lineHeight: "1.6",
+            lineHeight: "1.75",
             align: "auto",
             typeface: "literata",
             palette: "paper",
+            margins: "normal",
+            spread: "auto",
           }));
         }
 
@@ -1050,10 +1053,10 @@ function ReaderContent() {
 
   const readingAreaClass = (() => {
     if (isSettingsOpen) {
-      return "w-full md:mr-[380px] md:w-[calc(100vw-380px)] h-full";
+      return "max-md:h-[42dvh] max-md:max-h-[42dvh] md:mr-[380px] md:w-[calc(100vw-380px)] h-full";
     }
     if (isAiOpen) {
-      return "w-full md:mr-[420px] md:w-[calc(100vw-420px)] h-full";
+      return "max-md:h-[52dvh] max-md:max-h-[52dvh] md:mr-[420px] md:w-[calc(100vw-420px)] h-full";
     }
     return "w-full h-full";
   })();

@@ -30,7 +30,8 @@ export function getPageAreaDimensions(
   stageWidth,
   stageHeight,
   isShortLandscape = false,
-  isTwoPage = false
+  isTwoPage = false,
+  margins = "normal"
 ) {
   const remInPx =
     typeof document !== "undefined"
@@ -41,16 +42,20 @@ export function getPageAreaDimensions(
   let pageWidth;
   if (stageWidth < 768) {
     // phone < 768px: stage width minus 2x16px
-    pageWidth = Math.max(0, stageWidth - 32);
+    const phonePadding = margins === "narrow" ? 16 : margins === "wide" ? 48 : 32;
+    pageWidth = Math.max(0, stageWidth - phonePadding);
   } else if (stageWidth < 1024) {
     // tablet 768-1023px: min(stage, 44rem)
-    pageWidth = Math.min(stageWidth, max44rem);
+    const tabletMax = margins === "narrow" ? max44rem + 48 : margins === "wide" ? max44rem - 48 : max44rem;
+    pageWidth = Math.min(stageWidth, tabletMax);
   } else if (isTwoPage) {
     // desktop two facing pages: at most 1200px wide
-    pageWidth = Math.min(stageWidth - 96, 1200);
+    const twoPageMax = margins === "narrow" ? 1280 : margins === "wide" ? 1080 : 1200;
+    pageWidth = Math.min(stageWidth - 96, twoPageMax);
   } else {
     // desktop single page: min(stage minus 2x48px, 44rem)
-    pageWidth = Math.min(stageWidth - 96, max44rem);
+    const desktopMax = margins === "narrow" ? max44rem + 48 : margins === "wide" ? max44rem - 48 : max44rem;
+    pageWidth = Math.min(stageWidth - 96, desktopMax);
   }
 
   pageWidth = Math.floor(pageWidth);
@@ -262,7 +267,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
     const chosenFontFamily = settings?.typeface || settings?.fontFamily || fontFamily;
     const rawAlign = settings?.align || settings?.textAlign || "auto";
     const chosenAlign = rawAlign === "auto" ? (isMobile ? "left" : "justify") : rawAlign;
-    const chosenLineHeight = settings?.lineHeight || "1.6";
+    const chosenLineHeight = settings?.lineHeight || "1.75";
 
     const palette = THEME_PALETTES[effectiveTheme] || THEME_PALETTES.paper;
     const fontStack =
@@ -990,16 +995,47 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
 
     applyThemeToRendition(rendition);
 
-    // Re-display saved CFI so reading position never jumps when changing options
-    const savedCfi = currentCfiRef.current;
-    if (savedCfi && isReady) {
-      try {
-        rendition.display(savedCfi);
-      } catch (e) {
-        // ignore
+    if (isReady && containerRef.current && viewerRef.current) {
+      resizingUntilRef.current = Date.now() + 600;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const userSpread = settings?.spread || "auto";
+        const isTwoPageSpread =
+          userSpread === "none"
+            ? false
+            : rect.width >= 1100 && rect.width > rect.height;
+        const newDims = getPageAreaDimensions(
+          rect.width,
+          rect.height,
+          isShortLandscape,
+          isTwoPageSpread,
+          settings?.margins
+        );
+        viewerRef.current.style.width = `${newDims.pageWidth}px`;
+        viewerRef.current.style.height = `${newDims.pageHeight}px`;
+        viewerRef.current.style.marginTop = `${newDims.topOffset}px`;
+        viewerRef.current.style.marginBottom = `${newDims.bottomOffset}px`;
+        setPageDimensions(newDims);
+
+        if (rendition.spread) {
+          rendition.spread(isTwoPageSpread ? "auto" : "none", 900);
+        }
+        rendition.resize(newDims.pageWidth, newDims.pageHeight);
+      }
+
+      // Re-display saved CFI so reading position never jumps when changing options
+      const savedCfi = currentCfiRef.current;
+      if (savedCfi) {
+        try {
+          rendition.display(savedCfi).catch(() => {}).finally(() => {
+            resizingUntilRef.current = Date.now() + 400;
+          });
+        } catch (e) {
+          // ignore
+        }
       }
     }
-  }, [applyThemeToRendition, isReady]);
+  }, [applyThemeToRendition, isReady, settings, isShortLandscape]);
 
   // 3. Viewport size observer: debounced 120ms rendition.resize and re-display saved CFI
   useEffect(() => {
@@ -1011,8 +1047,12 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
         const { width: stageW, height: stageH } = entry.contentRect;
         if (stageW <= 0 || stageH <= 0) continue;
 
-        const isTwoPageSpread = stageW >= 1100 && stageW > stageH;
-        const newDims = getPageAreaDimensions(stageW, stageH, isShortLandscape, isTwoPageSpread);
+        const userSpread = settings?.spread || "auto";
+        const isTwoPageSpread =
+          userSpread === "none"
+            ? false
+            : stageW >= 1100 && stageW > stageH;
+        const newDims = getPageAreaDimensions(stageW, stageH, isShortLandscape, isTwoPageSpread, settings?.margins);
 
         if (viewerRef.current) {
           viewerRef.current.style.width = `${newDims.pageWidth}px`;
@@ -1059,12 +1099,17 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
         if (containerRef.current && viewerRef.current && renditionRef.current && isReady) {
           const rect = containerRef.current.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
-            const isTwoPageSpread = rect.width >= 1100 && rect.width > rect.height;
+            const userSpread = settings?.spread || "auto";
+            const isTwoPageSpread =
+              userSpread === "none"
+                ? false
+                : rect.width >= 1100 && rect.width > rect.height;
             const newDims = getPageAreaDimensions(
               rect.width,
               rect.height,
               isShortLandscape,
-              isTwoPageSpread
+              isTwoPageSpread,
+              settings?.margins
             );
             viewerRef.current.style.width = `${newDims.pageWidth}px`;
             viewerRef.current.style.height = `${newDims.pageHeight}px`;
