@@ -11,6 +11,7 @@ import {
   getAllHighlights,
 } from '@/utils/db';
 import BookCover from '@/components/BookCover';
+import { pluralize } from '@/lib/format';
 
 /**
  * Format raw seconds as "1h 4m" or "37m" (under an hour), never "0h 0m".
@@ -246,13 +247,13 @@ export default function HomePage() {
             </h1>
             <p className="font-label-md text-label-md text-on-surface-variant flex items-center gap-1.5 mt-0.5">
               <Link href="/library" className="hover:text-primary transition-colors">
-                {books.length} {books.length === 1 ? 'volume' : 'volumes'} in vault
+                {pluralize(books.length, 'volume')} in vault
               </Link>
               {vocabWords.length > 0 && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
                   <Link href="/vocabulary" className="hover:text-primary transition-colors">
-                    {vocabWords.length} lexicon cards
+                    {pluralize(vocabWords.length, 'lexicon card')}
                   </Link>
                 </>
               )}
@@ -398,9 +399,9 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
                 {/* Cover Card */}
-                <div
-                  onClick={() => router.push(`/reader/${currentHero.id}`)}
-                  className="relative shrink-0 w-32 sm:w-36 aspect-[2/3] cursor-pointer group"
+                <Link
+                  href={`/reader/${encodeURIComponent(currentHero.id)}`}
+                  className="relative shrink-0 w-32 sm:w-36 aspect-[2/3] cursor-pointer group block"
                 >
                   {currentHero.hasBinary === false && (
                     <div className="absolute top-2 left-2 z-20 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-sm border border-amber-500/40 text-[10px] font-label-sm text-amber-300 shadow-sm pointer-events-none">
@@ -416,7 +417,7 @@ export default function HomePage() {
                     aspect="aspect-[2/3]"
                     priority={true}
                   />
-                </div>
+                </Link>
 
                 {/* Book Metadata & Reading Status */}
                 <div className="flex flex-col flex-1 min-w-0 w-full justify-between self-stretch py-1">
@@ -437,12 +438,11 @@ export default function HomePage() {
                         </span>
                       )}
                     </div>
-                    <h2
-                      onClick={() => router.push(`/reader/${currentHero.id}`)}
-                      className="font-headline-lg text-headline-md sm:text-headline-lg text-primary font-medium leading-tight mb-2 cursor-pointer hover:underline"
-                    >
-                      {currentHero.title}
-                    </h2>
+                    <Link href={`/reader/${encodeURIComponent(currentHero.id)}`}>
+                      <h2 className="font-headline-lg text-headline-md sm:text-headline-lg text-primary font-medium leading-tight mb-2 hover:underline cursor-pointer">
+                        {currentHero.title}
+                      </h2>
+                    </Link>
                     <p className="font-body-ui text-caption text-on-surface-variant mb-4 line-clamp-2">
                       {currentHero.currentChapter ||
                         currentHero.chapterHeading ||
@@ -462,7 +462,7 @@ export default function HomePage() {
                             ? `Page ${currentHero.currentPage} of ${
                                 currentHero.totalPages || currentHero.pages || '—'
                               }`
-                            : `${currentHero.totalPages || currentHero.pages || 0} pages`}
+                            : pluralize(currentHero.totalPages || currentHero.pages || 0, 'page')}
                         </span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-[#E2EBF1] dark:bg-surface-container-highest overflow-hidden">
@@ -746,7 +746,7 @@ export default function HomePage() {
                     return (
                       <Link
                         key={b.id}
-                        href={`/book/${encodeURIComponent(b.id)}`}
+                        href={`/reader/${encodeURIComponent(b.id)}`}
                         className="p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 hover:border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-3 group"
                       >
                         <div className="relative w-12 aspect-[2/3] shrink-0">

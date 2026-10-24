@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { pluralize } from "@/lib/format";
 
 /**
  * Desktop & responsive reader page furniture (running head & footer page counts)
@@ -26,7 +27,7 @@ export default function PageFurniture({
   if (isLastPageInChapter || pagesLeftInChapter <= 0) {
     rightFooterText = "Last page in chapter";
   } else {
-    rightFooterText = `${pagesLeftInChapter} page${pagesLeftInChapter === 1 ? "" : "s"} left in chapter`;
+    rightFooterText = `${pluralize(pagesLeftInChapter, "page")} left in chapter`;
   }
 
   // Left page number in two-page spread: currentPage is the first of the two facing pages

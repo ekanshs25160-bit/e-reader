@@ -11,6 +11,7 @@ import {
   seedSampleReadingData,
   clearSeededReadingData,
 } from '@/utils/db';
+import { pluralize } from '@/lib/format';
 
 function resizeAvatarTo256(file) {
   return new Promise((resolve, reject) => {
@@ -462,7 +463,7 @@ export default function SettingsPage() {
                   Kept on this device
                 </span>
                 <span className="font-caption text-caption text-on-surface-variant font-medium bg-surface-container-low px-2.5 py-1 rounded-md border border-outline-variant/20 text-right">
-                  {storageSummary.booksCount} {storageSummary.booksCount === 1 ? 'book' : 'books'} · {storageSummary.highlightsCount} {storageSummary.highlightsCount === 1 ? 'highlight' : 'highlights'} · {storageSummary.vocabularyCount} {storageSummary.vocabularyCount === 1 ? 'word' : 'words'} · {storageSummary.storageFormatted}
+                  {pluralize(storageSummary.booksCount, 'book')} · {pluralize(storageSummary.highlightsCount, 'highlight')} · {pluralize(storageSummary.vocabularyCount, 'word')} · {storageSummary.storageFormatted}
                 </span>
               </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getAllBooks, deleteBook } from '@/utils/db';
+import { pluralize } from '@/lib/format';
 
 const SPINE_PALETTES = [
   { bg: '#223348', text: '#e3e9f0', accent: '#97acc8' }, // deep navy
@@ -114,7 +115,7 @@ function ShelfSpine({ book }) {
 
   return (
     <Link
-      href={`/book/${encodeURIComponent(book.id)}`}
+      href={`/reader/${encodeURIComponent(book.id)}`}
       style={{
         height: `${heightPx}px`,
         backgroundColor: palette.bg,
@@ -319,7 +320,7 @@ export default function Page() {
               <p className="font-body-ui text-label-md text-on-surface-variant mt-0.5">
                 every book you keep ·{' '}
                 <span className="font-body-ui-bold text-on-surface">
-                  {filteredBooks.length} {filteredBooks.length === 1 ? 'volume' : 'volumes'}
+                  {pluralize(filteredBooks.length, 'volume')}
                 </span>
               </p>
             </div>
@@ -548,7 +549,7 @@ export default function Page() {
                   className="bg-surface-container-lowest/90 border border-outline-variant/30 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group"
                 >
                   <Link
-                    href={`/book/${encodeURIComponent(book.id)}`}
+                    href={`/reader/${encodeURIComponent(book.id)}`}
                     className="flex items-center gap-3 min-w-0 flex-1"
                   >
                     <div className="w-10 aspect-[2/3] shrink-0">
@@ -599,7 +600,7 @@ export default function Page() {
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
 
-                    <Link href={`/book/${encodeURIComponent(book.id)}`}>
+                    <Link href={`/reader/${encodeURIComponent(book.id)}`}>
                       <span className="material-symbols-outlined text-[18px] text-outline">
                         chevron_right
                       </span>
@@ -632,7 +633,7 @@ export default function Page() {
                     <span className="material-symbols-outlined text-[13px]">delete</span>
                   </button>
 
-                  <Link href={`/book/${encodeURIComponent(book.id)}`} className="cursor-pointer active:scale-95 transition-transform">
+                  <Link href={`/reader/${encodeURIComponent(book.id)}`} className="cursor-pointer active:scale-95 transition-transform">
                     {book.hasBinary === false && (
                       <div className="absolute top-1.5 left-1.5 z-20 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-amber-500/40 text-[9px] font-label-sm text-amber-300 shadow-sm pointer-events-none">
                         <span className="material-symbols-outlined text-[11px]">cloud_off</span>
@@ -679,8 +680,8 @@ export default function Page() {
               >
                 <span className="material-symbols-outlined text-[14px]">auto_stories</span>
                 <span>
-                  {totalBooksKept} {totalBooksKept === 1 ? 'book' : 'books'} kept ·{' '}
-                  {totalPagesRead.toLocaleString()} pages read
+                  {pluralize(totalBooksKept, 'book')} kept ·{' '}
+                  {pluralize(totalPagesRead, 'page')} read
                 </span>
               </Link>
             </div>

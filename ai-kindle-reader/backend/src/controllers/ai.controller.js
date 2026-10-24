@@ -59,8 +59,12 @@ export const aiAssist = asyncHandler(async (req, res) => {
 
   try {
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof res.flushHeaders === "function") {
+      res.flushHeaders();
+    }
 
     const systemInstruction = `You are an elite literary scholar embedded inside a Kindle-style reader.
     Book: "${bookTitle}" by ${author || "Unknown"}.
@@ -106,8 +110,12 @@ export const aiSummary = asyncHandler(async (req, res) => {
 
   try {
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof res.flushHeaders === "function") {
+      res.flushHeaders();
+    }
     const systemInstruction = `You are an elite literary scholar embedded inside a Kindle-style reader.
         Book: "${bookTitle}" by ${author || "Unknown"}.
         Current Chapter: "${chapterTitle || "Unknown"}".
@@ -143,8 +151,12 @@ export const aiAuthorGrounding = asyncHandler(async (req, res) => {
 
   try {
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof res.flushHeaders === "function") {
+      res.flushHeaders();
+    }
 
     const systemInstruction = `You are an expert biographer and literary historian.
     Author: "${author}".

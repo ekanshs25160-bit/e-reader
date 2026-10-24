@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { saveBook, getBookBlob, getAllBooks } from '@/utils/db';
@@ -445,31 +446,11 @@ export default function Page() {
 
   return (
     <div className="min-h-dvh min-h-full font-body-ui text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background pb-32">
+      {/* Background ambient gradient */}
       <div className="fixed top-0 left-0 md:left-20 lg:left-64 right-0 h-80 bg-gradient-to-b from-[#DCE9F5]/70 dark:from-[#1c2438] via-[#EAF2F8]/30 dark:via-[#161c2d]/70 to-transparent pointer-events-none z-0 pb-28 md:pb-10"></div>
 
-      <header className="md:hidden bg-surface/80 dark:bg-surface-container/80 backdrop-blur-md text-primary dark:text-inverse-primary docked full-width top-0 sticky z-40 border-b border-outline-variant/30 dark:border-outline/20 shadow-sm flex justify-between items-center w-full px-margin h-14">
-        <div className="flex items-center gap-2.5">
-          <span className="material-symbols-outlined text-primary text-[22px]">
-            local_library
-          </span>
-          <span className="font-headline-sm text-headline-sm text-primary dark:text-inverse-primary tracking-tight font-bold">
-            The Commons
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={openImportModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant/40 bg-surface-container-lowest/70 backdrop-blur text-primary text-label-md font-label-md hover:bg-surface-container-high transition-colors active:scale-[0.98]"
-          >
-            <span className="material-symbols-outlined text-[18px]">upload_file</span>
-            <span>Import</span>
-          </button>
-        </div>
-      </header>
-
       <main className="relative z-10 max-w-2xl md:max-w-none mx-auto px-margin md:px-8 pt-4 space-y-6 w-full pb-28 md:pb-10">
-        <div className="flex items-start justify-between gap-4 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pt-2">
           <div>
             <h1 className="font-display-lg-mobile md:font-headline-lg text-display-lg-mobile md:text-headline-lg text-primary tracking-tight font-medium">
               The Commons
@@ -487,7 +468,7 @@ export default function Page() {
           <button
             type="button"
             onClick={openImportModal}
-            className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest/90 border border-outline-variant/50 text-primary text-label-sm font-label-sm shadow-sm hover:bg-surface-container-low transition-all active:scale-[0.98]"
+            className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-full bg-surface-container-lowest/90 border border-outline-variant/50 text-primary text-label-sm font-label-sm shadow-sm hover:bg-surface-container-low transition-all active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-[16px] text-secondary">
               cloud_upload
@@ -533,24 +514,30 @@ export default function Page() {
 
           {/* Topic Pills - visible when not actively searching */}
           {!isSearchMode && (
-            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-margin px-margin py-1">
-              {TOPICS.map((topic) => {
-                const active = selectedTopic === topic;
-                return (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() => setSelectedTopic(topic)}
-                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-caption font-label-sm transition-all ${
-                      active
-                        ? 'bg-primary text-on-primary shadow-xs font-semibold'
-                        : 'bg-surface-container-lowest/80 border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-low'
-                    }`}
-                  >
-                    {topic}
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-margin px-margin py-1 pr-12">
+                {TOPICS.map((topic) => {
+                  const active = selectedTopic === topic;
+                  return (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => setSelectedTopic(topic)}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-caption font-label-sm transition-all ${
+                        active
+                          ? 'bg-primary text-on-primary shadow-xs font-semibold'
+                          : 'bg-surface-container-lowest/80 border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-low'
+                      }`}
+                    >
+                      {topic}
+                    </button>
+                  );
+                })}
+              </div>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent"
+              />
             </div>
           )}
         </section>
@@ -581,10 +568,10 @@ export default function Page() {
                   };
 
                   return (
-                    <div
+                    <Link
                       key={book.id}
-                      onClick={() => router.push(`/book/${book.gutenbergId || book.id}`)}
-                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-white/20 border-r border-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none`}
+                      href={`/reader/${encodeURIComponent(book.gutenbergId ? `gutenberg_${book.gutenbergId}` : book.id)}`}
+                      className={`shrink-0 group cursor-pointer ${dims.width} ${dims.height} ${book.bg} rounded-t-sm rounded-b-[2px] border-l border-white/20 border-r border-black/40 shadow-md flex flex-col justify-between py-2.5 px-1 items-center transition-transform hover:-translate-y-2 hover:shadow-lg relative select-none focus:outline-none focus:ring-2 focus:ring-primary/40`}
                     >
                       {/* Top Ornament */}
                       <div className="flex items-center justify-center h-4 w-full shrink-0">
@@ -618,7 +605,7 @@ export default function Page() {
                           {book.author}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -857,27 +844,33 @@ function BookCollection({
             book.gutenbergId || (book.id && String(book.id).startsWith('gutenberg_'))
           );
 
+          const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
+
           return (
             <div
               key={book.id}
-              onClick={() => onOpenBook(book)}
-              className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
+              className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3 flex flex-col justify-between gap-2.5 shadow-sm hover:shadow-md transition-all group relative"
             >
-              <BookCover
-                coverUrl={book.coverUrl}
-                title={book.title}
-                author={book.author}
-                year={book.year}
-                aspect="aspect-[2/3]"
-              />
-              <div className="min-w-0">
-                <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider truncate block">
-                  {book.author}
-                </span>
-                <h3 className="font-headline-sm text-[15px] text-primary leading-tight font-medium truncate mt-0.5">
-                  {book.title}
-                </h3>
-              </div>
+              <Link
+                href={`/reader/${encodeURIComponent(bookKey)}`}
+                className="flex flex-col gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-xl cursor-pointer"
+              >
+                <BookCover
+                  coverUrl={book.coverUrl}
+                  title={book.title}
+                  author={book.author}
+                  year={book.year}
+                  aspect="aspect-[2/3]"
+                />
+                <div className="min-w-0">
+                  <span className="font-caption text-[10px] font-semibold text-secondary uppercase tracking-wider truncate block">
+                    {book.author}
+                  </span>
+                  <h3 className="font-headline-sm text-[15px] text-primary leading-tight font-medium truncate mt-0.5 group-hover:underline">
+                    {book.title}
+                  </h3>
+                </div>
+              </Link>
 
               <button
                 type="button"
@@ -940,13 +933,17 @@ function BookCollection({
           book.gutenbergId || (book.id && String(book.id).startsWith('gutenberg_'))
         );
 
+        const bookKey = book.gutenbergId ? `gutenberg_${book.gutenbergId}` : String(book.id);
+
         return (
           <div
             key={book.id}
-            onClick={() => onOpenBook(book)}
-            className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3.5 flex items-center justify-between gap-3.5 shadow-sm hover:shadow-md transition-shadow backdrop-blur-sm cursor-pointer"
+            className="bg-surface-container-lowest/80 border border-outline-variant/30 rounded-2xl p-3.5 flex items-center justify-between gap-3.5 shadow-sm hover:shadow-md transition-shadow backdrop-blur-sm group"
           >
-            <div className="flex items-center gap-3.5 min-w-0">
+            <Link
+              href={`/reader/${encodeURIComponent(bookKey)}`}
+              className="flex items-center gap-3.5 min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-xl cursor-pointer"
+            >
               <div className="w-14 aspect-[2/3] shrink-0">
                 <BookCover
                   coverUrl={book.coverUrl}
@@ -962,14 +959,14 @@ function BookCollection({
                     {book.author}
                   </span>
                 </div>
-                <h3 className="font-headline-sm text-[17px] text-primary leading-tight font-medium truncate mt-0.5">
+                <h3 className="font-headline-sm text-[17px] text-primary leading-tight font-medium truncate mt-0.5 group-hover:underline">
                   {book.title}
                 </h3>
                 <p className="font-caption text-[12px] text-on-surface-variant truncate mt-1">
                   {book.meta}
                 </p>
               </div>
-            </div>
+            </Link>
 
             {isSaved ? (
               <button

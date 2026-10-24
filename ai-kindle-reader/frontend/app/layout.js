@@ -1,23 +1,30 @@
 import './globals.css';
 import { ThemeProvider } from '@/components/common/ThemeProvider';
+import ServiceWorkerManager from '@/components/common/ServiceWorkerManager';
 
 export const metadata = {
   title: 'Flyleaf',
   description: 'A quiet e-reader with an AI margin.',
   applicationName: 'Flyleaf',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#faf9f6',
+  themeColor: '#7A4F2B',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#7A4F2B" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -39,7 +46,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="font-body-ui antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ServiceWorkerManager />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

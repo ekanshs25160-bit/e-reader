@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTheme } from '@/components/common/ThemeProvider';
 import { getStatsSummary, getAllBooks } from '@/utils/db';
+import { pluralize } from '@/lib/format';
 
 /**
  * Format raw seconds as "1h 4m" or "37m" (under an hour), never "0h 0m".
@@ -28,6 +30,7 @@ export default function Page() {
     setIsMounted(true);
   }, []);
 
+  const { userName, userAvatar } = useTheme();
   const [stats, setStats] = useState(null);
   const [booksMap, setBooksMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -118,11 +121,17 @@ export default function Page() {
         <header className="md:hidden bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md text-primary dark:text-inverse-primary docked full-width top-0 sticky z-40 shadow-sm dark:shadow-none flex justify-between items-center w-full px-gutter py-space-sm border-b border-outline-variant/30">
           <Link href="/settings" className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-outline-variant/40 bg-surface-container-high flex items-center justify-center">
-              <img
-                className="w-full h-full object-cover"
-                alt="Reader Portrait"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDa2b_KB0Su7rUQgMiJyBfvSK82YsnkwTxuyKmNZkBGDJLzpcrZ3GZhnuvjZXBPoI9CQly_7XbiNQqsODYWNmECDYE5zOV0443CZI9yawG6fLDxAiGrjct8SNzCxp-er031SZl--_tbtPqzVXiKNeM_ORZ2hj2I2VRLog2nK7ztHGtAaE2VJnAruY0XdTDOxmiHQa5sCuqZO2Ew1sYYvOPr_KCr6UchtqD2Y4qIMyX8QYJx4-nTDxs8"
-              />
+              {userAvatar ? (
+                <img
+                  className="w-full h-full object-cover"
+                  alt={userName || "Reader Portrait"}
+                  src={userAvatar}
+                />
+              ) : (
+                <span className="font-sans font-semibold text-xs text-primary dark:text-inverse-primary">
+                  {(userName || 'E').slice(0, 1).toUpperCase()}
+                </span>
+              )}
             </div>
             <span className="font-headline-md text-headline-md text-primary dark:text-inverse-primary font-medium tracking-tight">
               Flyleaf
@@ -299,7 +308,7 @@ export default function Page() {
                         {stats.currentStreak}
                       </span>
                       <span className="font-caption text-caption text-on-surface-variant ml-1.5 italic">
-                        {stats.currentStreak === 1 ? 'day streak' : 'days streak'}
+                        {pluralize(stats.currentStreak, 'day')} streak
                       </span>
                     </div>
                   </div>
@@ -314,7 +323,7 @@ export default function Page() {
                         {stats.finishedCount}
                       </span>
                       <span className="font-caption text-caption text-on-surface-variant ml-1.5">
-                        {stats.finishedCount === 1 ? 'volume' : 'volumes'}
+                        {pluralize(stats.finishedCount, 'volume', 'volumes', false)}
                       </span>
                     </div>
                   </div>
@@ -329,7 +338,7 @@ export default function Page() {
                         {stats.totalHighlights}
                       </span>
                       <span className="font-caption text-caption text-on-surface-variant ml-1.5">
-                        {stats.totalHighlights === 1 ? 'passage' : 'passages'}
+                        {pluralize(stats.totalHighlights, 'passage', 'passages', false)}
                       </span>
                     </div>
                   </div>
@@ -545,10 +554,7 @@ export default function Page() {
                         PAGES TURNED
                       </span>
                       <span className="text-base font-medium text-on-surface">
-                        {stats.totalPagesTurned.toLocaleString()}
-                        <span className="text-xs font-normal text-on-surface-variant ml-1">
-                          pages total
-                        </span>
+                        {pluralize(stats.totalPagesTurned, 'page')} total
                       </span>
                     </div>
                     <span className="material-symbols-outlined text-secondary text-[24px]">
@@ -564,8 +570,8 @@ export default function Page() {
                       The last six months
                     </h2>
                     <span className="font-caption text-caption text-on-surface-variant">
-                      {activeDaysCount} {activeDaysCount === 1 ? 'day' : 'days'} with a book · longest run{' '}
-                      {stats.longestStreak || 0} {stats.longestStreak === 1 ? 'day' : 'days'}
+                      {pluralize(activeDaysCount, 'day')} with a book · longest run{' '}
+                      {pluralize(stats.longestStreak || 0, 'day')}
                     </span>
                   </div>
                   <div className="overflow-x-auto pt-2 pb-1">
@@ -599,9 +605,7 @@ export default function Page() {
                             return (
                               <div
                                 key={day.date || i}
-                                title={`${day.date}: ${formatReadingTime(day.seconds)} (${
-                                  day.pages || 0
-                                } pages)`}
+                                title={`${day.date}: ${formatReadingTime(day.seconds)} (${pluralize(day.pages || 0, 'page')})`}
                                 className={`w-2.5 h-2.5 rounded-[2px] transition-colors ${bgClass}`}
                               />
                             );
@@ -677,7 +681,7 @@ export default function Page() {
                                   </span>
                                   {item.pages > 0 && (
                                     <p className="text-[10px] text-on-surface-variant">
-                                      {item.pages} {item.pages === 1 ? 'page' : 'pages'}
+                                      {pluralize(item.pages, 'page')}
                                     </p>
                                   )}
                                 </div>

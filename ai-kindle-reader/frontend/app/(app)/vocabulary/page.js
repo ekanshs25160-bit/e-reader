@@ -12,6 +12,7 @@ import {
   getAllBooks,
 } from '@/utils/db';
 import { lookupWord } from '@/lib/api';
+import { pluralize } from '@/lib/format';
 
 /**
  * Highlight occurrences of the word inside the context sentence
@@ -378,8 +379,8 @@ export default function VocabularyPage() {
 
         {/* Search & Actions Bar */}
         <section className="px-5 md:px-8 mt-2 pt-2 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="relative flex-1 flex items-center">
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+            <div className="relative flex-1 min-w-0 flex items-center">
               <span className="material-symbols-outlined absolute left-3.5 text-outline text-[18px]">
                 search
               </span>
@@ -395,10 +396,13 @@ export default function VocabularyPage() {
               type="button"
               onClick={handleStartQuiz}
               disabled={words.length === 0}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-label-md shadow-sm hover:bg-primary-container active:scale-95 transition-all disabled:opacity-50"
+              className="shrink-0 flex items-center justify-center gap-1.5 px-4 max-[480px]:px-2.5 max-[480px]:w-9 h-9 rounded-xl bg-primary text-on-primary font-label-md text-label-md shadow-sm hover:bg-primary-container active:scale-95 transition-all disabled:opacity-50"
+              title="Quiz Mode"
             >
               <span className="material-symbols-outlined text-[18px]">psychology</span>
-              <span className="hidden sm:inline">Start</span> Quiz Mode
+              <span className="hidden min-[480px]:inline">
+                <span className="hidden sm:inline">Start </span>Quiz Mode
+              </span>
             </button>
             <button
               type="button"
@@ -602,7 +606,7 @@ export default function VocabularyPage() {
                     No vocabulary cards are currently due for recall. Keep reading to discover and save new words!
                   </p>
                   <div className="text-caption font-caption text-outline pt-1">
-                    {words.length} {words.length === 1 ? 'word' : 'words'} saved in your vault
+                    {pluralize(words.length, 'word')} saved in your vault
                   </div>
                 </div>
               )}
@@ -612,7 +616,7 @@ export default function VocabularyPage() {
             <section className="px-5 md:px-8 mt-6 flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 md:items-start">
               <div className="md:col-span-2 flex items-center justify-between">
                 <h3 className="font-headline-sm text-[17px] font-medium text-primary">
-                  Saved Lexicon ({filteredLexicon.length} {filteredLexicon.length === 1 ? 'word' : 'words'})
+                  Saved Lexicon ({pluralize(filteredLexicon.length, 'word')})
                 </h3>
                 <span className="text-caption font-caption text-outline">Sorted by newest</span>
               </div>

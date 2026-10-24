@@ -27,6 +27,7 @@ import {
   getStatsSummary,
 } from "@/utils/db";
 import { downloadEpub, lookupWord } from "@/lib/api";
+import { pluralize } from "@/lib/format";
 
 const STATIC_GUTENBERG_BOOKS = {
   "2701": { title: "Moby Dick", author: "Herman Melville" },
@@ -1466,7 +1467,7 @@ function ReaderContent() {
           >
             {pageInfo.current === pageInfo.total && pageInfo.total > 1
               ? `< 1 minute left in ${chapterDisplayName}`
-              : `${minutesLeftInChapter} minute${minutesLeftInChapter === 1 ? "" : "s"} left in ${chapterDisplayName}`}
+              : `${pluralize(minutesLeftInChapter, "minute")} left in ${chapterDisplayName}`}
           </span>
         </div>
       )}
