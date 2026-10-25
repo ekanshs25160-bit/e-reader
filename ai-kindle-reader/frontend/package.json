@@ -7,9 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
+    "check": "npm run lint && npm run build",
     "test": "node --test tests/*.test.mjs",
     "check:reader": "node scripts/reader-check.mjs",
     "check:ui": "node scripts/ui-check.mjs"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -32,8 +40,15 @@
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.9",
     "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.15",
+    "fake-indexeddb": "^6.2.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "playwright": "^1.48.2",
     "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14"
+    "prettier": "^3.9.10",
+    "tailwindcss": "^3.4.14",
+    "vitest": "^5.0.5"
   }
 }
