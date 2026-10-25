@@ -24,6 +24,7 @@ export function Cover({
 
   return (
     <div
+      data-cover=""
       className={`relative w-full ${aspect} bg-surface border border-hairline rounded-[10px] overflow-hidden select-none transition-colors ${className}`}
     >
       {hasImage ? (
@@ -54,9 +55,9 @@ export function Cover({
 
           {/* Center: Title in Serif */}
           <div className="my-auto py-2">
-            <h3 className="font-serif text-[15px] sm:text-[17px] font-normal text-ink leading-snug line-clamp-3 tracking-tight">
+            <p className="font-serif text-[15px] sm:text-[17px] font-normal text-ink leading-snug line-clamp-3 tracking-tight">
               {title}
-            </h3>
+            </p>
           </div>
 
           {/* Bottom: Quiet Colophon / Format */}

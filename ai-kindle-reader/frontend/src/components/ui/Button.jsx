@@ -23,7 +23,7 @@ export function Button({
   ...props
 }) {
   const baseClasses =
-    'inline-flex items-center justify-center font-sans font-medium transition-all duration-200 ease-out select-none focus:outline-none disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]';
+    'inline-flex items-center justify-center font-sans font-medium whitespace-nowrap transition-all duration-200 ease-out select-none focus:outline-none disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]';
 
   // Size styling (ensures mobile touch target >= 44px)
   const sizeClasses = {

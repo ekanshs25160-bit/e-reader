@@ -17,7 +17,7 @@ export function CurrentReadHero({
 }) {
   return (
     <div className="space-y-8">
-      <Card className="p-6 sm:p-8">
+      <Card className="p-5 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-hairline flex-wrap gap-2">
           <span className="text-[10.5px] uppercase tracking-[0.12em] text-muted font-sans font-medium">
             Currently Reading
@@ -56,7 +56,7 @@ export function CurrentReadHero({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+        <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start min-w-0">
           <Link
             href={`/reader/${encodeURIComponent(currentHero.id)}`}
             className="w-32 sm:w-36 aspect-[2/3] shrink-0 block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-[10px]"
@@ -71,8 +71,8 @@ export function CurrentReadHero({
           </Link>
 
           <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
-            <div>
-              <h2 className="font-serif text-[22px] sm:text-[26px] text-ink font-normal leading-snug line-clamp-2 mb-1.5">
+            <div className="min-w-0">
+              <h2 className="font-serif text-[22px] sm:text-[26px] text-ink font-normal leading-snug line-clamp-3 mb-1.5 break-words">
                 {currentHero.title}
               </h2>
               <p className="font-sans text-[14.5px] text-muted mb-5 truncate">
@@ -93,7 +93,7 @@ export function CurrentReadHero({
                 href={`/reader/${encodeURIComponent(currentHero.id)}`}
                 className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-full"
               >
-                <Button variant="primary" icon="menu_book">
+                <Button variant="primary" icon="menu_book" className="whitespace-nowrap">
                   Resume reading
                 </Button>
               </Link>
@@ -102,22 +102,22 @@ export function CurrentReadHero({
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-5 sm:p-6 lg:p-8">
         <div className="grid grid-cols-3 divide-x divide-hairline">
-          <div className="pr-4 sm:pr-6">
+          <div className="pr-3 sm:pr-4 lg:pr-6 min-w-0">
             <StatBlock
               value={formatReadingTime(totalSeconds)}
               label="Time read"
             />
           </div>
-          <div className="px-4 sm:px-6">
+          <div className="px-3 sm:px-4 lg:px-6 min-w-0">
             <StatBlock
               value={String(totalPagesRead)}
               label="Pages read"
               unit="pages"
             />
           </div>
-          <div className="pl-4 sm:pl-6">
+          <div className="pl-3 sm:pl-4 lg:pl-6 min-w-0">
             <StatBlock
               value={String(currentStreak)}
               label="Day streak"

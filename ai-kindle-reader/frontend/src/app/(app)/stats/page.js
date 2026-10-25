@@ -1,3 +1,4 @@
+import { PageContainer } from '@/components/layout';
 import { StatsScreen } from '@/features/stats';
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <StatsScreen />;
+  return (
+    <PageContainer>
+      <StatsScreen />
+    </PageContainer>
+  );
 }

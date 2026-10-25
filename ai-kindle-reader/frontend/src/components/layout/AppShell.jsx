@@ -18,9 +18,7 @@ export function AppShell({ children }) {
         userName={userName}
       />
       <main className="md:pl-20 lg:pl-64 min-h-dvh">
-        <div className="max-w-2xl mx-auto px-5 pt-7 pb-28">
-          {children}
-        </div>
+        {children}
       </main>
       <BottomNav pathname={pathname} />
     </div>

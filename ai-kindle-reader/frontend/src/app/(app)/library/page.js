@@ -1,3 +1,4 @@
+import { PageContainer } from '@/components/layout';
 import { LibraryScreen } from '@/features/library';
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <LibraryScreen />;
+  return (
+    <PageContainer>
+      <LibraryScreen />
+    </PageContainer>
+  );
 }

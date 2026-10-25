@@ -31,7 +31,7 @@
  */
 
 import { chromium } from 'playwright';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -677,6 +677,154 @@ function evaluateForbiddenStyles() {
   return { pass: true, detail: '' };
 }
 
+/**
+ * 6. Desktop Layout & Width Integrity Check
+ * Verifies:
+ *   - At >= 1024px, on all standard pages (except settings and reader),
+ *     content width === min(available width minus gutters, the page's max width)
+ *   - No text is clipped or truncated unintentionally
+ *     (scrollWidth <= clientWidth + 1 on headings and buttons)
+ */
+function evaluateDesktopLayout() {
+  const container = document.querySelector('[data-page-container]');
+  if (!container) {
+    return { pass: true, detail: 'No PageContainer' };
+  }
+
+  // Settings uses size="narrow" and is explicitly excluded
+  const size = container.getAttribute('data-size') || 'default';
+  if (size === 'narrow') {
+    return { pass: true, detail: 'Skipped narrow (settings)' };
+  }
+
+  const mainEl = document.querySelector('main') || container.parentElement;
+  // Available width is main content area (clientWidth minus main horizontal padding, e.g. lg:pl-64 sidebar)
+  let availableWidth;
+  if (mainEl) {
+    const mainStyle = window.getComputedStyle(mainEl);
+    const mainPl = parseFloat(mainStyle.paddingLeft) || 0;
+    const mainPr = parseFloat(mainStyle.paddingRight) || 0;
+    availableWidth = mainEl.clientWidth - mainPl - mainPr;
+  } else {
+    availableWidth = window.innerWidth - 256;
+  }
+
+  const containerStyle = window.getComputedStyle(container);
+  const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+  const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
+  const gutters = paddingLeft + paddingRight;
+
+  // Max width of PageContainer (default: 1152px at < 1536px, 1280px at >= 1536px)
+  const pageMaxWidth = parseFloat(containerStyle.maxWidth) || 1152;
+  const maxContentWidth = pageMaxWidth - gutters;
+
+  // Content width inside PageContainer
+  const contentWidth = container.clientWidth - gutters;
+  const expectedContentWidth = Math.min(availableWidth - gutters, maxContentWidth);
+  const expectedContainerWidth = Math.min(availableWidth, pageMaxWidth);
+
+  const containerDiff = Math.abs(container.clientWidth - expectedContainerWidth);
+  const contentDiff = Math.abs(contentWidth - expectedContentWidth);
+
+  // Allow up to 2px tolerance for subpixel / scrollbar rounding
+  if (containerDiff > 2 && contentDiff > 2) {
+    return {
+      pass: false,
+      detail: `Content width ${contentWidth}px (container ${container.clientWidth}px) does not match expected min(available - gutters, page max) = ${expectedContentWidth}px (expected container ${expectedContainerWidth}px, diff: ${containerDiff}px)`,
+    };
+  }
+
+  // Heading and button unintentional clipping check
+  // (compare scrollWidth with clientWidth on headings and buttons)
+  const elements = container.querySelectorAll('h1, h2, h3, h4, h5, h6, button, [role="button"]');
+  const clippingFailures = [];
+
+  for (const el of elements) {
+    // Ignore invisible / hidden elements and book cover jackets
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) {
+      continue;
+    }
+    if (el.closest('[aria-hidden="true"], [data-hidden="true"], [data-cover]')) continue;
+
+    // Check horizontal scrollWidth vs clientWidth + 1px tolerance
+    if (el.scrollWidth > el.clientWidth + 1) {
+      const tag = el.tagName.toLowerCase();
+      const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 32);
+      clippingFailures.push(
+        `<${tag}> "${text}": scrollWidth ${el.scrollWidth}px > clientWidth ${el.clientWidth}px`
+      );
+      if (clippingFailures.length >= 5) break;
+    }
+  }
+
+  if (clippingFailures.length > 0) {
+    return {
+      pass: false,
+      detail: `Unintentional text clipping: ${clippingFailures.join(' | ')}`,
+    };
+  }
+
+  return {
+    pass: true,
+    detail: `content width ${contentWidth}px === min(${availableWidth - gutters}, ${maxContentWidth})px`,
+  };
+}
+
+/**
+ * Evaluates the 1210x756 Home screen specific requirements:
+ * - Full book title visible (up to 3 lines, not clipped)
+ * - One-line Resume button (whitespace-nowrap)
+ * - One-line stat labels (whitespace-nowrap)
+ */
+function evaluateHome1210() {
+  const container = document.querySelector('[data-page-container]');
+  if (!container) return { pass: false, detail: 'PageContainer not found on Home' };
+
+  // 1. Hero title: line-clamp-3, scrollWidth <= clientWidth + 1
+  const heroTitle = container.querySelector('h2');
+  if (!heroTitle) return { pass: false, detail: 'Hero title not found' };
+  if (heroTitle.scrollWidth > heroTitle.clientWidth + 1) {
+    return {
+      pass: false,
+      detail: `Hero title clipped: scrollWidth ${heroTitle.scrollWidth} > clientWidth ${heroTitle.clientWidth}`,
+    };
+  }
+
+  // 2. Resume button: one-line (not wrapped) and scrollWidth <= clientWidth + 1
+  const buttons = Array.from(container.querySelectorAll('button, [role="button"], a button'));
+  const resumeBtn = buttons.find((b) => b.textContent && b.textContent.includes('Resume'));
+  if (!resumeBtn) return { pass: false, detail: 'Resume button not found' };
+
+  // Verify it is on one line: clientHeight should be standard button height (~40-48px), not double-line (~60-80px)
+  if (resumeBtn.clientHeight > 52) {
+    return { pass: false, detail: `Resume button wrapped onto multiple lines (height: ${resumeBtn.clientHeight}px)` };
+  }
+  if (resumeBtn.scrollWidth > resumeBtn.clientWidth + 1) {
+    return { pass: false, detail: 'Resume button text clipped horizontally' };
+  }
+
+  // 3. Stat labels: one line, whitespace-nowrap, scrollWidth <= clientWidth + 1
+  const statLabels = Array.from(container.querySelectorAll('.divide-x span')).filter(
+    (s) => s.textContent && ['TIME READ', 'PAGES READ', 'DAY STREAK'].includes(s.textContent.trim().toUpperCase())
+  );
+  if (statLabels.length < 3) {
+    return { pass: false, detail: `Found only ${statLabels.length}/3 stat labels` };
+  }
+  for (const label of statLabels) {
+    if (label.scrollWidth > label.clientWidth + 1) {
+      return { pass: false, detail: `Stat label "${label.textContent.trim()}" clipped horizontally` };
+    }
+    if (label.clientHeight > 24) {
+      return { pass: false, detail: `Stat label "${label.textContent.trim()}" wrapped onto multiple lines` };
+    }
+  }
+
+  return { pass: true, detail: 'Full title visible, one-line Resume button, one-line stat labels' };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Contact Sheet Builder (HTML + PNG per palette)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -848,6 +996,15 @@ async function generateContactSheet(browser, palette, results) {
             <span class="check-name">Forbidden Styles</span>
             <span class="check-val ${r.checks.forbiddenStyles.pass ? 'ok' : 'err'}">${r.checks.forbiddenStyles.pass ? 'PASS' : 'FAIL'}</span>
           </div>
+          ${
+            r.checks.desktopLayout
+              ? `
+          <div class="check-row">
+            <span class="check-name">Desktop Layout</span>
+            <span class="check-val ${r.checks.desktopLayout.pass ? 'ok' : 'err'}">${r.checks.desktopLayout.pass ? 'PASS' : 'FAIL'}</span>
+          </div>`
+              : ''
+          }
         </div>
       </div>`;
       })
@@ -963,12 +1120,25 @@ async function main() {
     console.log('  ✅  Source code color audit: No hardcoded colors found (all tokens compliant)\n');
   }
 
-  const ready = await isServerReady(BASE_URL, 8000);
-  if (!ready) {
-    console.error(`❌ Dev server not reachable at ${BASE_URL}. Ensure it is running.`);
-    process.exit(1);
+  let devServer = null;
+  const serverAlreadyUp = await isServerReady(BASE_URL, 3000);
+  if (!serverAlreadyUp) {
+    console.log('🚀  Starting dev server…');
+    devServer = spawn('npm', ['run', 'dev'], {
+      cwd: path.resolve(__dirname, '..'),
+      stdio: 'pipe',
+      detached: false,
+    });
+    const ready = await isServerReady(BASE_URL, 60000);
+    if (!ready) {
+      console.error('    ❌  Dev server failed to start within 60s');
+      if (devServer) devServer.kill();
+      process.exit(1);
+    }
+    console.log('    ✅  Dev server ready\n');
+  } else {
+    console.log(`✅  Connected to dev server at ${BASE_URL}\n`);
   }
-  console.log(`✅  Connected to dev server at ${BASE_URL}\n`);
 
   console.log('📦  Building test EPUB and preparing test book…');
   const epubBytes = buildTestEpub();
@@ -1092,6 +1262,10 @@ async function main() {
           const touchRes = vp.isPhone
             ? await page.evaluate(evaluateTouchTargets)
             : { pass: true, detail: '' };
+          const isEligibleDesktop = !vp.isPhone && vp.width >= 1024 && route.slug !== 'settings' && route.slug !== 'reader' && route.slug !== 'book-detail';
+          const desktopLayoutRes = isEligibleDesktop
+            ? await page.evaluate(evaluateDesktopLayout)
+            : { pass: true, detail: '' };
 
           const consolePass = consoleErrors.length === 0;
           const consoleDetail = consoleErrors.join(' | ');
@@ -1103,9 +1277,13 @@ async function main() {
             consoleErrors: { pass: consolePass, detail: consoleDetail },
             forbiddenStyles: forbiddenRes,
           };
+          if (isEligibleDesktop) {
+            checkItems.desktopLayout = desktopLayoutRes;
+          }
 
           const checkKeys = ['noHScroll', 'contrast', 'consoleErrors', 'forbiddenStyles'];
           if (vp.isPhone) checkKeys.push('touchTargets');
+          if (isEligibleDesktop) checkKeys.push('desktopLayout');
 
           const allPass = checkKeys.every((k) => checkItems[k].pass);
           totalChecks += checkKeys.length;
@@ -1170,9 +1348,67 @@ async function main() {
     console.log(`    Saved: scripts/out/contact-sheet-${palette.key}.png`);
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Desktop Layout Integrity Check (1024, 1210, 1280, 1440, 1920px)
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n📐  Desktop Layout & Width Integrity Check (1024, 1210, 1280, 1440, 1920px)…');
+  console.log('─'.repeat(75));
+
+  const desktopTestViewports = [
+    { width: 1024, height: 768, label: '1024px' },
+    { width: 1210, height: 756, label: '1210px' },
+    { width: 1280, height: 800, label: '1280px' },
+    { width: 1440, height: 900, label: '1440px' },
+    { width: 1920, height: 1080, label: '1920px' },
+  ];
+
+  const desktopRoutes = ROUTES.filter(
+    (r) => r.slug !== 'settings' && r.slug !== 'reader' && r.slug !== 'book-detail'
+  );
+
+  const desktopPage = await context.newPage();
+
+  for (const vp of desktopTestViewports) {
+    await desktopPage.setViewportSize({ width: vp.width, height: vp.height });
+
+    for (const route of desktopRoutes) {
+      totalChecks++;
+      const targetUrl = `${BASE_URL}${route.path}`;
+      try {
+        await desktopPage.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await desktopPage.waitForTimeout(350);
+
+        const layoutRes = await desktopPage.evaluate(evaluateDesktopLayout);
+        if (!layoutRes.pass) {
+          totalFailures++;
+          console.log(`  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] FAILED layout check: ${layoutRes.detail}`);
+        } else {
+          console.log(`  ✅  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Layout OK: ${layoutRes.detail}`);
+        }
+
+        if (vp.width === 1210 && route.slug === 'home') {
+          totalChecks++;
+          const home1210Res = await desktopPage.evaluate(evaluateHome1210);
+          if (!home1210Res.pass) {
+            totalFailures++;
+            console.log(`  ❌  Home 1210x756 Card Check FAILED: ${home1210Res.detail}`);
+          } else {
+            console.log(`  ✅  Home 1210x756 Card Check PASSED: ${home1210Res.detail}`);
+          }
+        }
+      } catch (err) {
+        totalFailures++;
+        console.log(`  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Desktop check error: ${err.message}`);
+      }
+    }
+  }
+
+  await desktopPage.close();
+
   await page.close();
   await context.close();
   await browser.close();
+  if (devServer) devServer.kill();
 
   // Summary Report
   console.log('\n═════════════════════════════════════════════════════════════════════════════');
