@@ -23,7 +23,7 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-surface/95 backdrop-blur-md text-ink text-[13px] font-sans font-medium border border-hairline shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none ${className}`}
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-surface/90 backdrop-blur-md text-ink text-[13px] font-sans font-medium border border-hairline shadow-sm flex items-center gap-2.5 duration-200 select-none ${className}`}
     >
       {icon ? (
         typeof icon === 'string' ? (

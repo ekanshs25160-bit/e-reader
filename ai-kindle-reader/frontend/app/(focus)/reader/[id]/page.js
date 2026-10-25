@@ -919,10 +919,12 @@ function ReaderContent() {
   // Loading state while querying IndexedDB
   if (loadingDb) {
     return (
-      <div className="w-full h-dvh bg-surface text-on-surface flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-body-ui text-sm text-on-surface-variant font-medium">Loading book from vault...</p>
+      <div className="w-full h-dvh bg-surface text-ink flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 max-w-sm w-full">
+          <div className="w-16 h-24 rounded-[4px] border border-hairline bg-hairline/25 animate-pulse mb-1" />
+          <div className="w-40 h-3 bg-hairline/35 rounded-full animate-pulse" />
+          <div className="w-24 h-2 bg-hairline/25 rounded-full animate-pulse" />
+          <p className="font-sans text-[13px] text-muted font-normal mt-2">Opening volume…</p>
         </div>
       </div>
     );
@@ -965,8 +967,8 @@ function ReaderContent() {
             >
               {isReDownloading ? (
                 <>
-                  <span className="w-4 h-4 border-2 border-contrast border-t-transparent rounded-full animate-spin"></span>
-                  <span>Downloading EPUB...</span>
+                  <span className="w-2 h-2 rounded-full bg-contrast animate-pulse" />
+                  <span>Downloading EPUB…</span>
                 </>
               ) : (
                 <>
@@ -1637,13 +1639,10 @@ function ReaderContent() {
               loadingMeaning ? (
                 <div
                   style={{ color: "var(--reader-muted)" }}
-                  className="py-2.5 flex items-center gap-2 text-caption font-body-ui"
+                  className="py-2.5 flex items-center gap-2 text-caption font-sans"
                 >
-                  <span
-                    style={{ borderColor: "var(--reader-fg)" }}
-                    className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin"
-                  />
-                  <span>Looking up definition...</span>
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span>Looking up definition…</span>
                 </div>
               ) : wordMeaning?.definitions?.length > 0 ? (
                 <ol
@@ -1943,10 +1942,12 @@ export default function ReaderPage() {
   return (
     <Suspense
       fallback={
-        <div className="fixed inset-0 bg-surface flex items-center justify-center text-on-surface">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="font-body-ui text-sm text-on-surface-variant">Opening book...</p>
+        <div className="fixed inset-0 bg-surface flex items-center justify-center text-ink p-6">
+          <div className="flex flex-col items-center gap-4 max-w-sm w-full">
+            <div className="w-16 h-24 rounded-[4px] border border-hairline bg-hairline/25 animate-pulse mb-1" />
+            <div className="w-36 h-3 bg-hairline/35 rounded-full animate-pulse" />
+            <div className="w-24 h-2 bg-hairline/25 rounded-full animate-pulse" />
+            <p className="font-sans text-[13px] text-muted font-normal mt-2">Opening volume…</p>
           </div>
         </div>
       }

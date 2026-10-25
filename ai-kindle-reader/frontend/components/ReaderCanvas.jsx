@@ -1250,16 +1250,16 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
           }}
           className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-opacity-90 backdrop-blur-md"
         >
-          <div
-            style={{ borderColor: "var(--reader-accent)" }}
-            className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-3"
-          />
-          <p
-            style={{ color: "var(--reader-muted, " + activePalette.text + ")" }}
-            className="font-body-ui text-sm font-medium"
-          >
-            Opening book pages...
-          </p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-18 rounded-[4px] border border-hairline bg-hairline/25 animate-pulse mb-1" />
+            <div className="w-32 h-2.5 bg-hairline/35 rounded-full animate-pulse" />
+            <p
+              style={{ color: "var(--reader-muted, " + activePalette.text + ")" }}
+              className="font-sans text-xs font-normal"
+            >
+              Opening book pages…
+            </p>
+          </div>
         </div>
       )}
 

@@ -316,48 +316,44 @@ export default function BrowsePage() {
   const currentError = isSearchMode ? searchError : browseError;
 
   return (
-    <div className="min-h-dvh bg-background text-ink antialiased">
-      <main className="max-w-[72rem] mx-auto px-4 sm:px-8 lg:px-12 pt-6 pb-32 space-y-8">
-        {/* Page Header */}
-        <PageHeader
-          eyebrow="Public Domain"
-          title="The Commons"
-          description={
-            isSearchMode && typeof searchTotal === 'number'
-              ? `${searchTotal.toLocaleString()} catalog volumes found · Project Gutenberg`
-              : 'Free public domain catalog from Project Gutenberg'
-          }
-          actions={
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={openImportModal}
-              icon="cloud_upload"
-            >
-              Upload .epub
-            </Button>
-          }
-        />
+    <div className="space-y-8">
+      {/* Page Header */}
+      <PageHeader
+        eyebrow="PUBLIC DOMAIN CATALOG"
+        title="The Commons"
+        description="Curated classics from Project Gutenberg"
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={openImportModal}
+            icon="cloud_upload"
+            aria-label="Upload .epub"
+          >
+            <span className="hidden sm:inline">Upload .epub</span>
+          </Button>
+        }
+      />
 
-        {/* Search Input Bar (Hairline input) */}
-        <div className="space-y-4 max-w-[40rem]">
-          <div className="relative flex items-center">
-            <span
-              className="material-symbols-outlined absolute left-3.5 text-muted text-[20px] pointer-events-none"
-              style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20" }}
-              aria-hidden="true"
-            >
-              search
-            </span>
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, author, or subject…"
-              type="text"
-              className="w-full bg-surface border border-hairline rounded-[12px] pl-10 pr-10 py-3 text-[15px] font-sans text-ink placeholder:text-muted/60 focus:outline-none focus:border-ink transition-colors"
-            />
+      {/* Search Input Bar */}
+      <div className="space-y-4 max-w-[40rem]">
+        <div className="relative flex items-center">
+          <span
+            className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none"
+            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20" }}
+            aria-hidden="true"
+          >
+            search
+          </span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search title, author, or subject…"
+            type="text"
+            className="w-full min-h-[44px] bg-surface-container-low text-on-surface placeholder:text-on-surface-variant border border-outline-variant/30 rounded-full pl-10 pr-10 py-2.5 text-sm font-sans focus:outline-none focus:border-outline-variant transition-colors"
+          />
             {isSearching ? (
-              <span className="absolute right-3.5 w-4 h-4 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+              <span className="absolute right-4 w-2 h-2 rounded-full bg-accent animate-pulse" aria-label="Searching…" />
             ) : searchQuery ? (
               <button
                 type="button"
@@ -549,10 +545,12 @@ export default function BrowsePage() {
                     <div className="shrink-0 flex items-center">
                       {isDownloading ? (
                         <div
-                          className="min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2"
                           aria-label="Downloading EPUB"
                         >
-                          <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                          <div className="w-10 h-1.5 bg-hairline rounded-full overflow-hidden">
+                            <div className="w-2/3 h-full bg-accent animate-pulse rounded-full" />
+                          </div>
                         </div>
                       ) : isSaved ? (
                         <button
@@ -606,7 +604,6 @@ export default function BrowsePage() {
             </div>
           )}
         </section>
-      </main>
     </div>
   );
 }

@@ -693,8 +693,8 @@ export default function AiDrawer({
 
               {dictLoading ? (
                 <div className="py-6 text-center text-caption text-on-surface-variant animate-pulse flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                  <span>Looking up dictionary entry...</span>
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span>Looking up dictionary entry…</span>
                 </div>
               ) : dictError ? (
                 <div className="py-4 text-center text-xs text-on-surface-variant">
@@ -744,8 +744,8 @@ export default function AiDrawer({
                   <div className="h-3.5 bg-surface-container-high rounded-md w-full"></div>
                   <div className="h-3.5 bg-surface-container-high rounded-md w-5/6"></div>
                   <div className="flex items-center gap-2 pt-2 text-secondary text-xs font-label-sm">
-                    <span className="w-3.5 h-3.5 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                    <span>Consulting literary intelligence...</span>
+                    <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <span>Consulting literary intelligence…</span>
                   </div>
                 </div>
               )}
@@ -830,8 +830,8 @@ export default function AiDrawer({
               </p>
               {item.isStreaming && !item.answer && (
                 <div className="flex items-center gap-2 text-xs text-on-surface-variant animate-pulse py-1">
-                  <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                  <span>Thinking...</span>
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span>Thinking…</span>
                 </div>
               )}
               {item.error ? (
@@ -877,7 +877,7 @@ export default function AiDrawer({
               value={followUpInput}
               onChange={(e) => setFollowUpInput(e.target.value)}
               className="w-full bg-transparent border-0 p-0 text-on-surface font-body-ui text-[13px] placeholder:text-outline focus:ring-0 focus:outline-none"
-              placeholder="Ask a follow-up about this passage..."
+              placeholder="Ask a follow-up about this passage…"
               type="text"
             />
             <button

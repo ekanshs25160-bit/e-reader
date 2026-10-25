@@ -189,16 +189,12 @@ export default function HomePage() {
   const greeting = getTimeGreeting();
 
   return (
-    <div className="space-y-8 md:space-y-12">
+    <div className="space-y-8">
       {/* Editorial Page Header */}
       <PageHeader
-        eyebrow="Sanctuary Vault"
+        eyebrow="SANCTUARY VAULT"
         title={`${greeting}${userName || 'Reader'}`}
-        description={
-          books.length > 0
-            ? `${pluralize(books.length, 'volume')} preserved on this device.`
-            : 'Your private desk is clear and ready for reading.'
-        }
+        description={`${pluralize(books.length, 'volume')} preserved on this device.`}
         action={
           <Button
             variant="secondary"

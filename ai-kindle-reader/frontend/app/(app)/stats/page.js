@@ -123,14 +123,13 @@ export default function StatsPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-ink antialiased">
-      <main className="max-w-[72rem] mx-auto px-4 sm:px-8 lg:px-12 pt-6 pb-32 space-y-8">
-        {/* Page Header */}
-        <PageHeader
-          eyebrow="Reading Telemetry"
-          title="Your Reading"
-          description="Stored on this device. Synced only if you sign in."
-        />
+    <div className="space-y-8">
+      {/* Page Header */}
+      <PageHeader
+        eyebrow="READING ANALYTICS"
+        title="Your reading"
+        description="Stored on this device. Synced only if you sign in."
+      />
 
         {/* Back to Book link if reading recently */}
         {stats?.lastReadBook?.id && (
@@ -553,7 +552,6 @@ export default function StatsPage() {
             )}
           </div>
         )}
-      </main>
     </div>
   );
 }

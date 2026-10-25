@@ -142,8 +142,8 @@ export default function AppShell({ children }) {
       </aside>
 
       {/* Content Canvas */}
-      <main className="md:pl-20 lg:pl-64 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-12 min-h-dvh">
-        <div className="mx-auto w-full max-w-72rem px-4 sm:px-6 md:px-8 lg:px-12 py-4 md:py-8">
+      <main className="md:pl-20 lg:pl-64 min-h-dvh">
+        <div className="max-w-2xl mx-auto px-5 pt-7 pb-28">
           {children}
         </div>
       </main>

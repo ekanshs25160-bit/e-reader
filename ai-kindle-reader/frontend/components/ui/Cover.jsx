@@ -18,6 +18,7 @@ export function Cover({
   className = '',
 }) {
   const [imgError, setImgError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const hasImage = Boolean(src) && !imgError;
 
@@ -26,13 +27,21 @@ export function Cover({
       className={`relative w-full ${aspect} bg-surface border border-hairline rounded-[10px] overflow-hidden select-none transition-colors ${className}`}
     >
       {hasImage ? (
-        <img
-          src={src}
-          alt={`Cover of ${title}`}
-          onError={() => setImgError(true)}
-          className="w-full h-full object-cover rounded-[9px]"
-          loading="lazy"
-        />
+        <>
+          {!loaded && (
+            <div className="absolute inset-0 bg-hairline/25 animate-pulse rounded-[9px]" />
+          )}
+          <img
+            src={src}
+            alt={`Cover of ${title}`}
+            onLoad={() => setLoaded(true)}
+            onError={() => setImgError(true)}
+            className={`w-full h-full object-cover rounded-[9px] transition-opacity duration-200 ease-out ${
+              loaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            loading="lazy"
+          />
+        </>
       ) : (
         /* Typographic Book Jacket */
         <div className="w-full h-full p-3.5 sm:p-4 flex flex-col justify-between bg-surface text-ink text-left border-l-2 border-l-hairline">

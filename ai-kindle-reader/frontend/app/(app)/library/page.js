@@ -168,31 +168,30 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="space-y-8 md:space-y-10">
+    <div className="space-y-8">
       {/* Editorial Page Header */}
       <PageHeader
-        eyebrow="Collection"
-        title="Library"
-        description={
-          booksList.length > 0
-            ? `${pluralize(booksList.length, 'volume')} stored in your local sanctuary.`
-            : 'Your personal book collection is empty.'
-        }
+        eyebrow="PERSONAL ARCHIVE"
+        title="The Library"
+        description={`Every book you keep · ${pluralize(booksList.length, 'volume')}`}
         action={
-          <Button
-            variant="primary"
-            onClick={openImportModal}
-            icon="add"
-          >
-            Import EPUB
-          </Button>
+          <Segmented
+            options={[
+              { id: 'shelf', icon: 'view_column', label: <span className="hidden sm:inline">Shelf</span> },
+              { id: 'grid', icon: 'grid_view', label: <span className="hidden sm:inline">Grid</span> },
+              { id: 'list', icon: 'format_list_bulleted', label: <span className="hidden sm:inline">List</span> },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+            size="sm"
+          />
         }
       />
 
-      {/* Control Bar: Filters, Views, and Search */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2">
+      {/* Control Bar: Filters, Search, and Sort */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
         {/* Hairline Segmented Filter */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           <Segmented
             options={[
               { id: 'all', label: `All (${filterCounts.all})` },
@@ -201,26 +200,14 @@ export default function LibraryPage() {
             ]}
             value={activeFilter}
             onChange={setActiveFilter}
-            size="md"
-          />
-
-          {/* View Mode Switcher */}
-          <Segmented
-            options={[
-              { id: 'shelf', icon: 'view_column', label: 'Shelf' },
-              { id: 'grid', icon: 'grid_view', label: 'Grid' },
-              { id: 'list', icon: 'format_list_bulleted', label: 'List' },
-            ]}
-            value={viewMode}
-            onChange={setViewMode}
-            size="md"
+            size="sm"
           />
         </div>
 
         {/* Search and Sort */}
-        <div className="flex items-center gap-3 flex-1 lg:max-w-md">
+        <div className="flex items-center gap-2 flex-1 sm:max-w-xs">
           <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-on-surface-variant">
               <span className="material-symbols-outlined text-[19px] font-[300]">
                 search
               </span>
@@ -230,7 +217,7 @@ export default function LibraryPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search title or author…"
-              className="w-full min-h-[44px] pl-10 pr-4 py-2 text-[14px] font-sans rounded-full border border-hairline bg-surface text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors"
+              className="w-full min-h-[44px] pl-10 pr-4 py-2 text-[14px] font-sans rounded-full border border-outline-variant/30 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors"
             />
           </div>
 

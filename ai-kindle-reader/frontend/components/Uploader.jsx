@@ -157,26 +157,28 @@ export default function Uploader({
               processEpubFile(e.dataTransfer.files[0]);
             }
           }}
-          className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-xl cursor-pointer backdrop-blur-sm transition-all ${
+          className={`flex flex-col items-center justify-center w-full p-6 border border-dashed rounded-[12px] cursor-pointer transition-colors ${
             dragActive
-              ? "border-blue-500 bg-blue-500/10"
-              : "border-zinc-700 hover:border-blue-500 bg-zinc-900/50"
+              ? "border-accent bg-accent/10"
+              : "border-hairline hover:border-accent bg-surface"
           }`}
         >
           {isUploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-medium text-zinc-200">
-                Saving to device memory...
+            <div className="flex flex-col items-center gap-2.5 py-2">
+              <div className="w-16 h-1 bg-hairline rounded-full overflow-hidden">
+                <div className="w-1/2 h-full bg-accent animate-pulse rounded-full" />
+              </div>
+              <span className="text-[13.5px] font-sans font-medium text-ink">
+                Saving volume to device memory…
               </span>
             </div>
           ) : (
             <>
-              <span className="text-sm font-medium text-zinc-200">
+              <span className="text-[14px] font-sans font-medium text-ink">
                 + Import Local .EPUB Book
               </span>
-              <span className="text-xs text-zinc-400 mt-1">
-                Stored 100% offline in IndexedDB
+              <span className="text-[12px] font-sans text-muted mt-1">
+                Stored offline in IndexedDB
               </span>
             </>
           )}
@@ -188,7 +190,7 @@ export default function Uploader({
             className="hidden"
           />
         </label>
-        {error && <p className="text-xs text-red-400 mt-2 text-center">{error}</p>}
+        {error && <p className="text-[12px] font-sans text-semantic-error mt-2 text-center">{error}</p>}
       </div>
     );
   }
@@ -258,24 +260,26 @@ export default function Uploader({
             className="hidden"
           />
           {isUploading ? (
-            <div className="flex flex-col items-center gap-2 py-4">
-              <div className="w-8 h-8 border-3 border-secondary border-t-transparent rounded-full animate-spin"></div>
-              <span className="font-body-ui-bold text-body-ui-bold text-primary">
-                Extracting metadata &amp; saving to IndexedDB...
+            <div className="flex flex-col items-center gap-2.5 py-4">
+              <div className="w-20 h-1.5 bg-hairline rounded-full overflow-hidden">
+                <div className="w-2/3 h-full bg-accent animate-pulse rounded-full" />
+              </div>
+              <span className="font-sans text-[14px] font-medium text-ink">
+                Extracting metadata and saving to vault…
               </span>
-              <span className="font-caption text-caption text-on-surface-variant">
+              <span className="text-[12px] font-sans text-muted">
                 Parsing offline EPUB package
               </span>
             </div>
           ) : (
             <div className="space-y-1">
-              <span className="material-symbols-outlined text-[32px] text-secondary mb-2 block mx-auto">
+              <span className="material-symbols-outlined text-[32px] text-accent mb-2 block mx-auto">
                 auto_stories
               </span>
-              <p className="font-body-ui-bold text-body-ui-bold text-primary">
+              <p className="font-serif text-[17px] text-ink font-normal">
                 Drop an .epub file here, or tap to browse
               </p>
-              <p className="font-caption text-caption text-on-surface-variant">
+              <p className="text-[12px] font-sans text-muted">
                 Extracts metadata &amp; persistent cover image offline
               </p>
             </div>
@@ -283,7 +287,7 @@ export default function Uploader({
         </label>
 
         {error && (
-          <p className="text-xs text-red-400 text-center font-body-ui">{error}</p>
+          <p className="text-[12px] text-semantic-error text-center font-sans">{error}</p>
         )}
 
         <div className="flex flex-col gap-2 pt-1">

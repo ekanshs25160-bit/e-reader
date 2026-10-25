@@ -17,6 +17,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import Skeleton from '@/components/ui/Skeleton';
+import EmptyState from '@/components/ui/EmptyState';
 
 /**
  * Highlight occurrences of the word inside the context sentence:
@@ -404,128 +405,103 @@ export default function VocabularyPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-ink antialiased">
-      <main className="max-w-[72rem] mx-auto px-4 sm:px-8 lg:px-12 pt-6 pb-32 space-y-8">
-        {/* Header */}
-        <PageHeader
-          eyebrow="Lexicon &amp; Vocabulary"
-          title="Words"
-          description={
-            words.length > 0
-              ? `${pluralize(words.length, 'saved term')} collected across your reading`
-              : 'Words and definitions captured while reading'
-          }
-          actions={
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleStartQuiz}
-                disabled={words.length === 0}
-                icon="psychology"
-              >
-                Quiz Mode
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setLookupMessage('');
-                  setAddModalOpen(true);
-                }}
-                icon="add"
-              >
-                Add Word
-              </Button>
-            </div>
-          }
-        />
-
-        {/* Search & Topic Filters */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 min-w-0">
-              <span
-                className="material-symbols-outlined absolute left-3.5 text-muted text-[20px] pointer-events-none"
-                style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
-                aria-hidden="true"
-              >
-                search
-              </span>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search words, definitions, or sentences…"
-                type="text"
-                className="w-full bg-surface border border-hairline rounded-[12px] pl-10 pr-10 py-3 text-[15px] font-sans text-ink placeholder:text-muted/60 focus:outline-none focus:border-ink transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-1.5 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-muted hover:text-ink transition-colors"
-                  aria-label="Clear search"
-                >
-                  <span
-                    className="material-symbols-outlined text-[18px]"
-                    style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
-                  >
-                    close
-                  </span>
-                </button>
-              )}
-            </div>
-
-            {/* Collapsed actions for small mobile screens */}
-            <div className="flex items-center gap-1.5 sm:hidden">
-              <button
-                type="button"
-                onClick={handleStartQuiz}
-                disabled={words.length === 0}
-                aria-label="Quiz Mode"
-                className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border border-hairline bg-surface flex items-center justify-center text-muted hover:text-ink transition-colors disabled:opacity-40"
-              >
-                <span
-                  className="material-symbols-outlined text-[20px]"
-                  style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
-                >
-                  psychology
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLookupMessage('');
-                  setAddModalOpen(true);
-                }}
-                aria-label="Add word"
-                className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-ink text-surface flex items-center justify-center hover:opacity-90 transition-opacity"
-              >
-                <span
-                  className="material-symbols-outlined text-[20px] !text-background"
-                  style={{ fontVariationSettings: "'FILL' 0, 'wght' 300", color: 'var(--theme-contrast)' }}
-                >
-                  add
-                </span>
-              </button>
-            </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <PageHeader
+        eyebrow="PERSONAL LEXICON"
+        title="Vocabulary"
+        description={`${pluralize(words.length, 'saved term')} & contextual definitions`}
+        action={
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleStartQuiz}
+              disabled={words.length === 0}
+              icon="psychology"
+              aria-label="Quiz Mode"
+            >
+              <span className="hidden sm:inline">Quiz</span>
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setLookupMessage('');
+                setAddModalOpen(true);
+              }}
+              icon="add"
+              aria-label="Add Word"
+            >
+              <span className="hidden sm:inline">Add Word</span>
+            </Button>
           </div>
+        }
+      />
 
-          {/* Book Filter Chips */}
-          {words.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 py-1">
-              {bookFilterChips.map((chip) => (
-                <Chip
-                  key={chip.id}
-                  label={chip.label}
-                  count={chip.count}
-                  selected={selectedBook === chip.id}
-                  onClick={() => setSelectedBook(chip.id)}
-                />
-              ))}
-            </div>
+      {/* Search & Topic Filters */}
+      <div className="space-y-4">
+        <div className="relative flex items-center">
+          <span
+            className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px] pointer-events-none"
+            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+            aria-hidden="true"
+          >
+            search
+          </span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search words, definitions, or sentences…"
+            type="text"
+            className="w-full min-h-[44px] bg-surface-container-low text-on-surface placeholder:text-on-surface-variant border border-outline-variant/30 rounded-full pl-10 pr-10 py-2.5 text-sm font-sans focus:outline-none focus:border-outline-variant transition-colors"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1.5 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface transition-colors"
+              aria-label="Clear search"
+            >
+              <span
+                className="material-symbols-outlined text-[18px]"
+                style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}
+              >
+                close
+              </span>
+            </button>
           )}
         </div>
+
+        {/* Book Filter Chips */}
+        {words.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 py-1">
+            {bookFilterChips.map((chip) => (
+              <Chip
+                key={chip.id}
+                label={chip.label}
+                count={chip.count}
+                selected={selectedBook === chip.id}
+                onClick={() => setSelectedBook(chip.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+        {/* Error State */}
+        {!loading && error && (
+          <EmptyState
+            icon="error_outline"
+            title="Lexicon unavailable"
+            description={error}
+            action={
+              <Button variant="primary" onClick={loadVocabulary} icon="refresh">
+                Retry
+              </Button>
+            }
+          />
+        )}
 
         {/* Loading State */}
         {loading ? (
@@ -656,15 +632,37 @@ export default function VocabularyPage() {
               </div>
 
               {filteredLexicon.length === 0 ? (
-                <div className="py-12 px-6 rounded-[12px] border border-hairline bg-surface text-center space-y-2">
-                  <p className="font-serif text-[18px] text-ink font-normal">
-                    No vocabulary items
-                  </p>
-                  <p className="text-[13px] text-muted font-sans">
-                    {searchQuery
-                      ? `No terms match “${searchQuery}”.`
-                      : 'Capture words while reading to build your personal lexicon.'}
-                  </p>
+                <div className="mt-4">
+                  <EmptyState
+                    icon={searchQuery ? 'search_off' : 'spellcheck'}
+                    title={searchQuery ? 'No matching words found' : 'Your lexicon is empty'}
+                    description={
+                      searchQuery
+                        ? `No terms match “${searchQuery}”.`
+                        : 'Capture unfamiliar words while reading to build your personal lexicon.'
+                    }
+                    action={
+                      searchQuery ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSelectedBook('All Books');
+                          }}
+                        >
+                          Reset filters
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => setAddModalOpen(true)}
+                          icon="add"
+                        >
+                          Add term
+                        </Button>
+                      )
+                    }
+                  />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -779,7 +777,6 @@ export default function VocabularyPage() {
             </section>
           </>
         )}
-      </main>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

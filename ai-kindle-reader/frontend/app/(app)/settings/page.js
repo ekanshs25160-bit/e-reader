@@ -283,14 +283,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-ink antialiased">
-      <main className="max-w-[48rem] mx-auto px-4 sm:px-8 pt-6 pb-32 space-y-8">
-        {/* Page Header */}
-        <PageHeader
-          eyebrow="Preferences"
-          title="Settings"
-          description="Local configuration, typography, theme, and storage management"
-        />
+    <div className="space-y-8">
+      {/* Page Header */}
+      <PageHeader
+        eyebrow="PREFERENCES"
+        title="Settings"
+        description="Local configuration, typography, theme, and storage management"
+      />
 
         {/* Section: Account & Sync (Isolated Slot Component) */}
         <section className="space-y-2">
@@ -451,7 +450,7 @@ export default function SettingsPage() {
                   className="min-w-[44px] min-h-[44px] w-10 h-10 rounded-full border border-hairline flex items-center justify-center text-muted hover:text-ink hover:border-ink/40 transition-colors disabled:opacity-50"
                 >
                   {isExporting ? (
-                    <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
                   ) : (
                     <span
                       className="material-symbols-outlined text-[18px]"
@@ -614,7 +613,6 @@ export default function SettingsPage() {
             100% Local-First Storage Architecture
           </p>
         </footer>
-      </main>
 
       {/* Restore Confirmation Summary Modal */}
       {restoreModalOpen && pendingRestore && (
