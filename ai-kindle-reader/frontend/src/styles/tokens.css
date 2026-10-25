@@ -1,0 +1,189 @@
+/* =========================================================================
+   Flyleaf Editorial Design System — Tokens & Palettes (Paper, Sepia, Night, OLED)
+   ========================================================================= */
+
+:root,
+.paper,
+[data-theme="paper"] {
+  --theme-bg: #FAF9F6;
+  --theme-surface: #FAF9F6;
+  --theme-ink: #152A41;
+  --theme-muted: #43474D;
+  --theme-hairline: rgba(21, 42, 65, 0.12);
+  --theme-accent: #855224;
+  --theme-contrast: #FAF9F6;
+  --theme-selection: rgba(133, 82, 36, 0.20);
+  --theme-success: #2A6B48;
+  --theme-error: #9E3535;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
+  /* Tailwind RGB Channels */
+  --c-background: 250 249 246;
+  --c-surface: 250 249 246;
+  --c-surface-bright: 250 249 246;
+  --c-surface-container: 244 243 240;
+  --c-surface-container-high: 239 238 235;
+  --c-surface-container-highest: 233 232 229;
+  --c-surface-container-low: 248 247 244;
+  --c-surface-container-lowest: 255 255 255;
+  --c-surface-dim: 230 228 223;
+  --c-surface-variant: 239 238 235;
+  --c-primary: 21 42 65;
+  --c-primary-container: 21 42 65;
+  --c-on-primary: 250 249 246;
+  --c-on-primary-container: 250 249 246;
+  --c-on-surface: 21 42 65;
+  --c-on-surface-variant: 67 71 77;
+  --c-outline: 21 42 65;
+  --c-outline-variant: 21 42 65;
+  --c-secondary: 133 82 36;
+  --c-secondary-container: 244 236 216;
+  --c-on-secondary-container: 133 82 36;
+  --c-error: 158 53 53;
+  --c-error-container: 255 218 214;
+}
+
+.sepia,
+[data-theme="sepia"] {
+  --theme-bg: #F4ECD8;
+  --theme-surface: #F4ECD8;
+  --theme-ink: #2C2214;
+  --theme-muted: #5B472C;
+  --theme-hairline: rgba(44, 34, 20, 0.12);
+  --theme-accent: #7A491B;
+  --theme-contrast: #F4ECD8;
+  --theme-selection: rgba(122, 73, 27, 0.20);
+  --theme-success: #2B613D;
+  --theme-error: #9A3828;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
+  /* Tailwind RGB Channels */
+  --c-background: 244 236 216;
+  --c-surface: 244 236 216;
+  --c-surface-bright: 244 236 216;
+  --c-surface-container: 239 230 208;
+  --c-surface-container-high: 233 223 199;
+  --c-surface-container-highest: 227 216 190;
+  --c-surface-container-low: 247 240 223;
+  --c-surface-container-lowest: 252 247 236;
+  --c-surface-dim: 223 212 186;
+  --c-surface-variant: 233 223 199;
+  --c-primary: 44 34 20;
+  --c-primary-container: 44 34 20;
+  --c-on-primary: 244 236 216;
+  --c-on-primary-container: 244 236 216;
+  --c-on-surface: 44 34 20;
+  --c-on-surface-variant: 91 71 44;
+  --c-outline: 44 34 20;
+  --c-outline-variant: 44 34 20;
+  --c-secondary: 122 73 27;
+  --c-secondary-container: 233 223 199;
+  --c-on-secondary-container: 122 73 27;
+  --c-error: 154 56 40;
+  --c-error-container: 247 210 200;
+}
+
+.dark,
+.night,
+[data-theme="night"] {
+  --theme-bg: #141824;
+  --theme-surface: #141824;
+  --theme-ink: #F0F2F5;
+  --theme-muted: #A0AEC0;
+  --theme-hairline: rgba(240, 242, 245, 0.12);
+  --theme-accent: #E2B170;
+  --theme-contrast: #141824;
+  --theme-selection: rgba(226, 177, 112, 0.20);
+  --theme-success: #4E9A68;
+  --theme-error: #D05D5D;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
+  /* Tailwind RGB Channels */
+  --c-background: 20 24 36;
+  --c-surface: 20 24 36;
+  --c-surface-bright: 34 41 56;
+  --c-surface-container: 28 34 48;
+  --c-surface-container-high: 35 42 59;
+  --c-surface-container-highest: 40 49 68;
+  --c-surface-container-low: 24 30 44;
+  --c-surface-container-lowest: 18 21 32;
+  --c-surface-dim: 16 19 29;
+  --c-surface-variant: 35 42 59;
+  --c-primary: 240 242 245;
+  --c-primary-container: 36 44 61;
+  --c-on-primary: 20 24 36;
+  --c-on-primary-container: 240 242 245;
+  --c-on-surface: 240 242 245;
+  --c-on-surface-variant: 160 174 192;
+  --c-outline: 240 242 245;
+  --c-outline-variant: 240 242 245;
+  --c-secondary: 226 177 112;
+  --c-secondary-container: 36 44 61;
+  --c-on-secondary-container: 226 177 112;
+  --c-error: 208 93 93;
+  --c-error-container: 60 25 25;
+}
+
+.oled,
+[data-theme="oled"] {
+  --theme-bg: #000000;
+  --theme-surface: #000000;
+  --theme-ink: #EDEDED;
+  --theme-muted: #A0A0A0;
+  --theme-hairline: rgba(237, 237, 237, 0.12);
+  --theme-accent: #E2B170;
+  --theme-contrast: #000000;
+  --theme-selection: rgba(226, 177, 112, 0.20);
+  --theme-success: #4E9A68;
+  --theme-error: #D05D5D;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
+  /* Tailwind RGB Channels */
+  --c-background: 0 0 0;
+  --c-surface: 0 0 0;
+  --c-surface-bright: 18 18 18;
+  --c-surface-container: 12 12 12;
+  --c-surface-container-high: 22 22 22;
+  --c-surface-container-highest: 30 30 30;
+  --c-surface-container-low: 8 8 8;
+  --c-surface-container-lowest: 0 0 0;
+  --c-surface-dim: 6 6 6;
+  --c-surface-variant: 20 20 20;
+  --c-primary: 237 237 237;
+  --c-primary-container: 24 24 24;
+  --c-on-primary: 0 0 0;
+  --c-on-primary-container: 237 237 237;
+  --c-on-surface: 237 237 237;
+  --c-on-surface-variant: 160 160 160;
+  --c-outline: 237 237 237;
+  --c-outline-variant: 237 237 237;
+  --c-secondary: 226 177 112;
+  --c-secondary-container: 24 24 24;
+  --c-on-secondary-container: 226 177 112;
+  --c-error: 208 93 93;
+  --c-error-container: 45 15 15;
+}

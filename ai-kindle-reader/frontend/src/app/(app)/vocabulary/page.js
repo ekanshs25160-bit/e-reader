@@ -550,7 +550,7 @@ export default function VocabularyPage() {
                   <button
                     type="button"
                     onClick={() => speakWord(activeRecallCard.word)}
-                    className="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-muted hover:text-ink hover:border-ink/30 transition-colors"
+                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border border-hairline flex items-center justify-center text-muted hover:text-ink hover:border-ink/30 transition-colors"
                     title="Pronounce word"
                     aria-label="Pronounce word"
                   >
@@ -686,7 +686,7 @@ export default function VocabularyPage() {
                             <button
                               type="button"
                               onClick={() => speakWord(entry.word)}
-                              className="text-muted hover:text-ink transition-colors p-1"
+                              className="text-muted hover:text-ink transition-colors min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center"
                               title="Pronounce word"
                               aria-label={`Pronounce ${entry.word}`}
                             >
