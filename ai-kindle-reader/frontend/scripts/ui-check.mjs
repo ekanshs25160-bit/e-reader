@@ -84,7 +84,7 @@ const MOCK_CATALOG_BOOKS = [
     id: 1342,
     title: 'Pride and Prejudice',
     authors: ['Jane Austen'],
-    coverUrl: null,
+    coverUrl: 'http://localhost:3000/mock-covers/1342.jpg',
     downloadUrl: '/api/download/1342',
     languages: ['en'],
     subjects: ['Classics', 'Fiction'],
@@ -95,7 +95,7 @@ const MOCK_CATALOG_BOOKS = [
     id: 84,
     title: 'Frankenstein',
     authors: ['Mary Wollstonecraft Shelley'],
-    coverUrl: null,
+    coverUrl: 'http://localhost:3000/mock-covers/84.jpg',
     downloadUrl: '/api/download/84',
     languages: ['en'],
     subjects: ['Gothic Fiction', 'Horror'],
@@ -106,7 +106,7 @@ const MOCK_CATALOG_BOOKS = [
     id: 28054,
     title: 'The Brothers Karamazov',
     authors: ['Fyodor Dostoyevsky'],
-    coverUrl: null,
+    coverUrl: 'http://localhost:3000/mock-covers/28054.jpg',
     downloadUrl: '/api/download/28054',
     languages: ['en'],
     subjects: ['Russian Lit', 'Philosophy'],
@@ -289,6 +289,7 @@ async function seedTestData(page, epubBytes) {
         id: bookId,
         title: 'Flyleaf Test Book',
         author: 'Test Author',
+        coverUrl: 'http://localhost:3000/mock-covers/test-book.jpg',
         status: 'reading',
         progress: 42,
         currentCfi: 'epubcfi(/6/2[chapter1]!/4/2/1:0)',
@@ -1323,7 +1324,35 @@ async function main() {
   }
 
   // Create single browser context so IndexedDB and settings persist across all checks
-  const context = await browser.newContext();
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+
+  // Valid 1x1 test JPEG buffer for fulfilling cover image requests
+  const TEST_JPEG_BUFFER = Buffer.from([
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+    0x00, 0x48, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
+    0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c, 0x14, 0x0d, 0x0c, 0x0b, 0x0b, 0x0c, 0x19, 0x12,
+    0x13, 0x0f, 0x14, 0x1d, 0x1a, 0x1f, 0x1e, 0x1d, 0x1a, 0x1c, 0x1c, 0x20, 0x24, 0x2e, 0x27, 0x20,
+    0x22, 0x2c, 0x23, 0x1c, 0x1c, 0x28, 0x37, 0x29, 0x2c, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1f, 0x27,
+    0x39, 0x3d, 0x38, 0x32, 0x3c, 0x2e, 0x33, 0x34, 0x32, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01,
+    0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4, 0x00, 0x1f, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f,
+    0x00, 0xbe, 0x00, 0xff, 0xd9,
+  ]);
+
+  // Route image requests: fulfill with valid test JPEG unless URL has 'broken' (return 404)
+  await context.route(/(mock-covers|\.jpe?g|\/covers\/)/i, (route) => {
+    const url = route.request().url();
+    if (url.includes('broken')) {
+      route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not found' });
+    } else {
+      route.fulfill({
+        status: 200,
+        contentType: 'image/jpeg',
+        body: TEST_JPEG_BUFFER,
+      });
+    }
+  });
 
   // Route mock catalog books so /browse renders reliably in sandboxed/offline environments
   await context.route('**/api/catalog/browse*', (route) => {
@@ -1340,6 +1369,47 @@ async function main() {
         message: 'Mock catalog for UI check',
       }),
     });
+  });
+
+  // Route mock book detail for catalog books
+  await context.route('**/api/catalog/book/*', (route) => {
+    const url = route.request().url();
+    const id = url.split('/').pop().replace(/\?.*/, '');
+    if (id === 'broken-book' || id === '99999') {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          statusCode: 200,
+          data: {
+            id: 99999,
+            gutenbergId: 99999,
+            title: 'Broken Cover Edition',
+            authors: ['Anonymous'],
+            coverUrl: 'http://localhost:3000/mock-covers/broken-cover.jpg',
+            downloadUrl: null,
+            languages: ['en'],
+            subjects: ['Test'],
+            downloadCount: 1,
+            description: 'Volume with an intentionally broken cover image URL.',
+          },
+        }),
+      });
+      return;
+    }
+    const match = MOCK_CATALOG_BOOKS.find((b) => String(b.id) === id);
+    if (match) {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          statusCode: 200,
+          data: match,
+        }),
+      });
+      return;
+    }
+    route.continue();
   });
 
   // Seed IndexedDB
@@ -1636,6 +1706,109 @@ async function main() {
   }
 
   await mobilePage.close();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Book Covers & Fallback Integrity Check (390px, 1440px)
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n📚  Book Covers & Fallback Integrity Check (390px, 1440px)…');
+  console.log('─'.repeat(75));
+
+  const coverTestViewports = [
+    { width: 390, height: 844, label: '390px' },
+    { width: 1440, height: 900, label: '1440px' },
+  ];
+
+  const coverRoutes = [
+    { path: '/browse', name: 'Browse', expectedCovers: MOCK_CATALOG_BOOKS.length },
+    { path: '/library', name: 'Library', expectedCovers: 1 },
+    { path: '/', name: 'Home', expectedCovers: 1 },
+    { path: '/stats', name: 'Stats', expectedCovers: 1 },
+    { path: `/book/${TEST_BOOK_ID}`, name: 'Book Detail', expectedCovers: 1 },
+  ];
+
+  const coverPage = await context.newPage();
+
+  for (const vp of coverTestViewports) {
+    await coverPage.setViewportSize({ width: vp.width, height: vp.height });
+
+    for (const route of coverRoutes) {
+      totalChecks++;
+      const targetUrl = `${BASE_URL}${route.path}`;
+      try {
+        await coverPage.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await coverPage.waitForLoadState('networkidle').catch(() => {});
+        // Wait for cover images to settle
+        await coverPage.waitForFunction(
+          () => {
+            const imgs = Array.from(document.querySelectorAll('img[alt^="Cover of"]'));
+            return imgs.length > 0 && imgs.every((img) => img.complete);
+          },
+          { timeout: 8000 }
+        ).catch(() => {});
+        await coverPage.waitForTimeout(300);
+
+        const coverStats = await coverPage.evaluate(() => {
+          const images = Array.from(document.querySelectorAll('img[alt^="Cover of"]'));
+          const valid = images.filter((img) => img.complete && img.naturalWidth > 0);
+          return {
+            total: images.length,
+            valid: valid.length,
+          };
+        });
+
+        if (coverStats.valid !== route.expectedCovers) {
+          totalFailures++;
+          console.log(
+            `  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] FAILED covers check: expected ${route.expectedCovers} valid covers, got ${coverStats.valid} (total img tags: ${coverStats.total})`
+          );
+        } else {
+          console.log(
+            `  ✅  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Covers OK: ${coverStats.valid}/${route.expectedCovers} valid img[alt^="Cover of"] (naturalWidth > 0)`
+          );
+        }
+      } catch (err) {
+        totalFailures++;
+        console.log(`  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Cover check error: ${err.message}`);
+      }
+    }
+
+    // Broken cover URL fallback check: assert that a book with a broken cover URL falls back to placeholder
+    totalChecks++;
+    try {
+      await coverPage.goto(`${BASE_URL}/book/gutenberg_99999`, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await coverPage.waitForLoadState('networkidle').catch(() => {});
+      await coverPage.waitForTimeout(500);
+
+      const brokenFallback = await coverPage.evaluate(() => {
+        const coverEl = document.querySelector('[data-cover]');
+        if (!coverEl) return { pass: false, detail: 'No [data-cover] element found' };
+        const img = coverEl.querySelector('img[alt^="Cover of"]');
+        if (img && img.naturalWidth > 0) {
+          return { pass: false, detail: 'Image loaded despite broken URL' };
+        }
+        const text = coverEl.innerText?.trim() || '';
+        if (!text) {
+          return { pass: false, detail: 'Placeholder text/monogram not rendered' };
+        }
+        return {
+          pass: true,
+          detail: `Fell back to placeholder (${text.slice(0, 30).replace(/\n/g, ' ')})`,
+        };
+      });
+
+      if (!brokenFallback.pass) {
+        totalFailures++;
+        console.log(`  ❌  Broken Cover   [${vp.label.padEnd(7)}] FAILED fallback check: ${brokenFallback.detail}`);
+      } else {
+        console.log(`  ✅  Broken Cover   [${vp.label.padEnd(7)}] Fallback OK: ${brokenFallback.detail}`);
+      }
+    } catch (err) {
+      totalFailures++;
+      console.log(`  ❌  Broken Cover   [${vp.label.padEnd(7)}] Broken cover test error: ${err.message}`);
+    }
+  }
+
+  await coverPage.close();
 
   await page.close();
   await context.close();

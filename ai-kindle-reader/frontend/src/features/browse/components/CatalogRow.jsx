@@ -24,7 +24,7 @@ export function CatalogRow({
       >
         <div className="w-12 aspect-[2/3] shrink-0">
           <Cover
-            coverUrl={book.coverUrl}
+            src={book.coverUrl}
             title={book.title}
             author={book.author}
             size="sm"

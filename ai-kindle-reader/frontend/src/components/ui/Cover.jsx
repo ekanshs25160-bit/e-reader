@@ -5,16 +5,21 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
+let hasWarnedCoverUrl = false;
+
 /**
  * Cover
  * Editorial book cover component:
- * - If image source is available and valid: renders image with 1px hairline border
+ * - Accepts "src" (preferred) or "coverUrl" (deprecated fallback)
+ * - Status states: 'loading' | 'loaded' | 'error'
+ * - If image source is available and valid: renders image with 1px hairline border & fade-in
  * - Fallback: renders an authentic typographic book jacket in active palette
- * - When rendered at <= 72px wide: renders a centered serif monogram of the title's first letter
+ * - When size="sm" (or rendered <= 72px wide): renders only a centered serif monogram of the title's first letter
  * - Aspect ratio 2:3, flat surface, no drop shadows or fake gradients
  */
 export function Cover({
   src,
+  coverUrl,
   title = 'Untitled Book',
   author = 'Unknown Author',
   aspect = 'aspect-[2/3]',
@@ -22,11 +27,38 @@ export function Cover({
   className = '',
 }) {
   const containerRef = useRef(null);
-  const [imgError, setImgError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef(null);
+
+  const source = src || coverUrl || null;
+
+  if (process.env.NODE_ENV !== 'production' && coverUrl && !hasWarnedCoverUrl) {
+    hasWarnedCoverUrl = true;
+    console.warn(
+      '[Cover] "coverUrl" prop is deprecated. Please use "src" instead.'
+    );
+  }
+
+  // One status state: 'loading' | 'loaded' | 'error'
+  const [status, setStatus] = useState(() => (source ? 'loading' : 'error'));
   const [isCompact, setIsCompact] = useState(size === 'sm');
 
-  const hasImage = Boolean(src) && !imgError;
+  // Reset status to loading whenever source changes, and check cached/completed image
+  useEffect(() => {
+    if (!source) {
+      setStatus('error');
+      return;
+    }
+
+    setStatus('loading');
+
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setStatus('loaded');
+      } else {
+        setStatus('error');
+      }
+    }
+  }, [source]);
 
   useIsomorphicLayoutEffect(() => {
     const el = containerRef.current;
@@ -46,6 +78,8 @@ export function Cover({
     }
   }, [size]);
 
+  const hasImage = Boolean(source) && status !== 'error';
+  const showMonogram = size === 'sm' || isCompact;
   const monogram = (title || 'U').trim().charAt(0).toUpperCase();
 
   return (
@@ -56,29 +90,30 @@ export function Cover({
     >
       {hasImage ? (
         <>
-          {!loaded && (
+          {status === 'loading' && (
             <div className="absolute inset-0 bg-hairline/25 animate-pulse rounded-[9px]" />
           )}
           <img
-            src={src}
+            ref={imgRef}
+            src={source}
             alt={`Cover of ${title}`}
-            onLoad={() => setLoaded(true)}
-            onError={() => setImgError(true)}
-            className={`w-full h-full object-cover rounded-[9px] transition-opacity duration-200 ease-out ${
-              loaded ? 'opacity-100' : 'opacity-0'
+            onLoad={() => setStatus('loaded')}
+            onError={() => setStatus('error')}
+            className={`w-full h-full object-cover rounded-[9px] transition-opacity duration-300 ease-out ${
+              status === 'loaded' ? 'opacity-100' : 'opacity-0'
             }`}
             loading="lazy"
           />
         </>
-      ) : isCompact ? (
-        /* Compact Monogram (<= 72px) */
+      ) : showMonogram ? (
+        /* Compact Monogram (size="sm" or <= 72px) */
         <div className="w-full h-full flex items-center justify-center bg-surface text-ink border-l-2 border-l-hairline p-1">
           <span className="font-serif text-[22px] sm:text-[26px] font-normal text-ink select-none leading-none">
             {monogram}
           </span>
         </div>
       ) : (
-        /* Typographic Book Jacket (> 72px) */
+        /* Typographic Book Jacket (> 72px, size != 'sm') */
         <div className="w-full h-full p-3.5 sm:p-4 flex flex-col justify-between bg-surface text-ink text-left border-l-2 border-l-hairline">
           {/* Top: Author */}
           <div className="min-w-0">
@@ -97,7 +132,10 @@ export function Cover({
           {/* Bottom: Quiet Colophon / Format */}
           <div className="pt-2 border-t border-hairline/60 flex items-center justify-between text-[9px] uppercase tracking-[0.12em] text-muted/70 font-sans">
             <span>FLYLEAF</span>
-            <span className="material-symbols-outlined text-[13px] text-muted" aria-hidden="true">
+            <span
+              className="material-symbols-outlined text-[13px] text-muted"
+              aria-hidden="true"
+            >
               auto_stories
             </span>
           </div>

@@ -138,7 +138,7 @@ export function BookDetailScreen() {
           {/* Large cover: Left on desktop, Top on phone */}
           <div className="w-36 sm:w-44 md:w-56 aspect-[2/3] shrink-0 mx-auto md:mx-0">
             <Cover
-              coverUrl={book.coverUrl}
+              src={book.coverUrl}
               title={book.title}
               author={book.authorText}
               size="lg"

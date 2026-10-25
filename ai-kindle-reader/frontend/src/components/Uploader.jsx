@@ -1,2 +1,1 @@
-export * from '@/features/library';
-export { default } from '@/features/library';
+export { Uploader, Uploader as default } from '@/features/library';

@@ -1,7 +1,6 @@
 'use client';
 
 import { formatReadingTime } from '../lib/stats-helpers';
-import { Cover } from '@/components/ui';
 
 export function ReadingActivityChart({ stats, booksMap, totalWeeklySeconds }) {
   return (
@@ -36,10 +35,10 @@ export function ReadingActivityChart({ stats, booksMap, totalWeeklySeconds }) {
 
                 <div className="w-full aspect-[2/3] rounded-[4px] border border-hairline overflow-hidden bg-background flex items-center justify-center">
                   {isActive && topCover ? (
-                    <Cover
+                    <img
                       src={topCover}
-                      title={topTitle}
-                      aspect="aspect-[2/3]"
+                      alt={topTitle}
+                      className="w-full h-full object-cover"
                     />
                   ) : isActive ? (
                     <span

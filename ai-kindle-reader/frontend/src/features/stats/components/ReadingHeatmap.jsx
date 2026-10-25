@@ -102,6 +102,7 @@ export function ReadingHeatmap({ stats, booksMap, activeDaysCount, monthLabels }
                       src={coverUrl}
                       title={title}
                       author={author}
+                      size="sm"
                       aspect="aspect-[2/3]"
                     />
                   </div>
