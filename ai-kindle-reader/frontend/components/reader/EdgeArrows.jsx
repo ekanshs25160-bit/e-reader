@@ -31,14 +31,14 @@ export default function EdgeArrows({
         aria-label="Previous page (Left arrow)"
         title="Previous page (Left arrow)"
         style={{
-          color: "var(--reader-fg, #152A41)",
+          color: "var(--reader-fg)",
         }}
         className={`fixed left-2 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full flex items-center justify-center
           transition-all duration-200 select-none
           ${
             isAtStart
               ? "opacity-20 cursor-not-allowed pointer-events-none"
-              : "opacity-40 hover:opacity-100 focus-visible:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
+              : "opacity-40 hover:opacity-100 focus-visible:opacity-100 hover:bg-hairline/20 active:scale-95 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none cursor-pointer"
           }`}
       >
         <span
@@ -60,14 +60,14 @@ export default function EdgeArrows({
         aria-label="Next page (Right arrow)"
         title="Next page (Right arrow)"
         style={{
-          color: "var(--reader-fg, #152A41)",
+          color: "var(--reader-fg)",
         }}
         className={`fixed right-2 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full flex items-center justify-center
           transition-all duration-200 select-none
           ${
             isAtEnd
               ? "opacity-20 cursor-not-allowed pointer-events-none"
-              : "opacity-40 hover:opacity-100 focus-visible:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
+              : "opacity-40 hover:opacity-100 focus-visible:opacity-100 hover:bg-hairline/20 active:scale-95 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none cursor-pointer"
           }`}
       >
         <span

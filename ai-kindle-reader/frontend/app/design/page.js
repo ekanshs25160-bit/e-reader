@@ -45,52 +45,19 @@ function getContrast(hex1, hex2) {
   return ((lighter + 0.05) / (darker + 0.05)).toFixed(2);
 }
 
-const PALETTE_SPECS = [
-  {
-    id: 'paper',
-    name: 'Paper',
-    bg: '#FAF9F6',
-    surface: '#FAF9F6',
-    ink: '#152A41',
-    muted: '#43474D',
-    hairline: 'rgba(21, 42, 65, 0.12)',
-    accent: '#855224',
-    contrast: '#FAF9F6',
-  },
-  {
-    id: 'sepia',
-    name: 'Sepia',
-    bg: '#F4ECD8',
-    surface: '#F4ECD8',
-    ink: '#2C2214',
-    muted: '#5B472C',
-    hairline: 'rgba(44, 34, 20, 0.12)',
-    accent: '#7A491B',
-    contrast: '#F4ECD8',
-  },
-  {
-    id: 'night',
-    name: 'Night',
-    bg: '#141824',
-    surface: '#141824',
-    ink: '#F0F2F5',
-    muted: '#A0AEC0',
-    hairline: 'rgba(240, 242, 245, 0.12)',
-    accent: '#E2B170',
-    contrast: '#141824',
-  },
-  {
-    id: 'oled',
-    name: 'OLED',
-    bg: '#000000',
-    surface: '#000000',
-    ink: '#EDEDED',
-    muted: '#A0A0A0',
-    hairline: 'rgba(237, 237, 237, 0.12)',
-    accent: '#E2B170',
-    contrast: '#000000',
-  },
-];
+import { READER_PALETTES } from '@/app/(focus)/reader/[id]/page';
+
+const PALETTE_SPECS = Object.entries(READER_PALETTES).map(([id, p]) => ({
+  id,
+  name: p.name,
+  bg: p.bg,
+  surface: p.bg,
+  ink: p.fg,
+  muted: p.muted,
+  hairline: p.border,
+  accent: p.accent,
+  contrast: p.bg,
+}));
 
 export default function DesignSystemPage() {
   const { palette: activeAppPalette, setPalette } = useTheme();

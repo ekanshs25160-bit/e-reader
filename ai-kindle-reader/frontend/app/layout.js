@@ -16,14 +16,12 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#7A4F2B',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#7A4F2B" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -37,7 +35,28 @@ export default function RootLayout({ children }) {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('flyleaf-theme')||'auto';var d=m==='night'||(m==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
+            __html: `(function(){
+  try {
+    var m = localStorage.getItem('flyleaf-theme') || 'auto';
+    var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var resolved = m === 'auto' ? (isDark ? 'night' : 'paper') : (m === 'day' ? 'paper' : m);
+    var el = document.documentElement;
+    el.classList.remove('dark', 'night', 'sepia', 'oled', 'paper');
+    if (resolved === 'night') {
+      el.classList.add('dark', 'night');
+      el.setAttribute('data-theme', 'night');
+    } else if (resolved === 'oled') {
+      el.classList.add('dark', 'oled');
+      el.setAttribute('data-theme', 'oled');
+    } else if (resolved === 'sepia') {
+      el.classList.add('sepia');
+      el.setAttribute('data-theme', 'sepia');
+    } else {
+      el.classList.add('paper');
+      el.setAttribute('data-theme', 'paper');
+    }
+  } catch(e) {}
+})();`,
           }}
         />
       </head>

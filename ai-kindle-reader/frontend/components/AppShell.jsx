@@ -21,7 +21,26 @@ function isActive(pathname, href) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
-  const { isNight, toggleDayNight, userName } = useTheme();
+  const { themeMode, cycleTheme, userName } = useTheme();
+
+  const THEME_LABELS = {
+    auto: 'Auto',
+    paper: 'Paper',
+    sepia: 'Sepia',
+    night: 'Night',
+    oled: 'OLED',
+  };
+
+  const THEME_ICONS = {
+    auto: 'brightness_auto',
+    paper: 'light_mode',
+    sepia: 'auto_stories',
+    night: 'dark_mode',
+    oled: 'contrast',
+  };
+
+  const currentThemeLabel = THEME_LABELS[themeMode] || 'Auto';
+  const currentThemeIcon = THEME_ICONS[themeMode] || 'contrast';
 
   return (
     <div className="min-h-dvh bg-background text-ink font-sans antialiased selection:bg-accent/20 selection:text-ink">
@@ -40,13 +59,13 @@ export default function AppShell({ children }) {
           </Link>
           <button
             type="button"
-            onClick={toggleDayNight}
-            title={isNight ? 'Switch to Paper Day' : 'Switch to Night Sanctuary'}
-            aria-label="Toggle Day and Night Theme"
+            onClick={cycleTheme}
+            title={`Theme: ${currentThemeLabel} (click to cycle)`}
+            aria-label={`Cycle theme. Current theme is ${currentThemeLabel}`}
             className="hidden lg:flex w-9 h-9 rounded-full items-center justify-center text-muted hover:text-ink hover:bg-hairline/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <span className="material-symbols-outlined text-[20px] font-[300]">
-              {isNight ? 'light_mode' : 'dark_mode'}
+              {currentThemeIcon}
             </span>
           </button>
         </div>
@@ -110,13 +129,13 @@ export default function AppShell({ children }) {
           </Link>
           <button
             type="button"
-            onClick={toggleDayNight}
-            title={isNight ? 'Switch to Paper Day' : 'Switch to Night Sanctuary'}
-            aria-label="Toggle theme"
+            onClick={cycleTheme}
+            title={`Theme: ${currentThemeLabel} (click to cycle)`}
+            aria-label={`Cycle theme. Current theme is ${currentThemeLabel}`}
             className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <span className="material-symbols-outlined text-[18px] font-[300]">
-              {isNight ? 'light_mode' : 'dark_mode'}
+              {currentThemeIcon}
             </span>
           </button>
         </div>

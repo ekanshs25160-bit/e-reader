@@ -51,35 +51,36 @@ export default function ContentsPopover({
       ref={popoverRef}
       role="dialog"
       aria-label="Table of contents"
+      data-overlay="popover"
       style={{
-        backgroundColor: "var(--reader-bg, #FAF9F6)",
-        borderColor: "var(--reader-border, rgba(0,0,0,0.15))",
-        color: "var(--reader-fg, #152A41)",
+        backgroundColor: "var(--reader-bg)",
+        borderColor: "var(--reader-border)",
+        color: "var(--reader-fg)",
         top: coords ? `${coords.top}px` : undefined,
         left: coords ? `${coords.left}px` : undefined,
       }}
-      className="fixed top-14 left-4 sm:left-14 z-50 w-[360px] max-w-[calc(100vw-32px)] max-h-[70vh] flex flex-col rounded-xl border shadow-xl backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      className="fixed top-14 left-4 sm:left-14 z-50 w-[360px] max-w-[calc(100vw-32px)] max-h-[70vh] flex flex-col rounded-2xl border backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-150"
     >
       {/* Popover Header */}
       <div
-        style={{ borderColor: "var(--reader-border, rgba(0,0,0,0.1))" }}
+        style={{ borderColor: "var(--reader-border)" }}
         className="px-4 py-3 border-b flex items-center justify-between shrink-0"
       >
         <div className="flex items-center gap-2">
           <span
-            style={{ color: "var(--reader-fg, #152A41)" }}
+            style={{ color: "var(--reader-fg)" }}
             className="material-symbols-outlined text-[18px]"
           >
             menu_book
           </span>
           <h3
-            style={{ color: "var(--reader-fg, #152A41)" }}
+            style={{ color: "var(--reader-fg)" }}
             className="font-headline-sm text-sm font-semibold tracking-tight"
           >
             Contents
           </h3>
           <span
-            style={{ color: "var(--reader-muted, #727782)" }}
+            style={{ color: "var(--reader-muted)" }}
             className="text-[11px] font-label-sm"
           >
             ({toc.length})
@@ -90,7 +91,7 @@ export default function ContentsPopover({
           type="button"
           onClick={onClose}
           aria-label="Close contents"
-          style={{ color: "var(--reader-muted, #727782)" }}
+          style={{ color: "var(--reader-muted)" }}
           className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-transform"
         >
           <span className="material-symbols-outlined text-[18px]">close</span>
@@ -98,7 +99,7 @@ export default function ContentsPopover({
       </div>
 
       {/* Chapters Scrollable List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5 divide-y divide-black/5 dark:divide-white/5">
+      <div className="flex-1 overflow-y-auto p-2 space-y-0.5 divide-y divide-hairline">
         {toc && toc.length > 0 ? (
           toc.map((item, idx) => {
             const label = item.label?.trim() || `Chapter ${idx + 1}`;
@@ -117,10 +118,10 @@ export default function ContentsPopover({
                   onClose();
                 }}
                 style={{
-                  backgroundColor: isCurrent ? "var(--reader-accent-alpha, rgba(133,82,36,0.12))" : "transparent",
-                  color: isCurrent ? "var(--reader-accent, #855224)" : "var(--reader-fg, #152A41)",
+                  backgroundColor: isCurrent ? "var(--reader-border)" : "transparent",
+                  color: isCurrent ? "var(--reader-accent)" : "var(--reader-fg)",
                 }}
-                className={`w-full text-left py-2.5 px-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 active:scale-[0.99] transition-all flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
+                className={`w-full text-left py-2.5 px-3 rounded-lg hover:bg-hairline/20 active:scale-[0.99] transition-all flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
                   isCurrent ? "font-semibold" : "font-normal"
                 }`}
               >

@@ -41,6 +41,13 @@
   --theme-success: #2A6B48;
   --theme-error: #9E3535;
 
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
   /* Tailwind RGB Channels */
   --c-background: 250 249 246;
   --c-surface: 250 249 246;
@@ -78,6 +85,13 @@
   --theme-contrast: #F4ECD8;
   --theme-success: #2B613D;
   --theme-error: #9A3828;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
 
   /* Tailwind RGB Channels */
   --c-background: 244 236 216;
@@ -118,6 +132,13 @@
   --theme-success: #4E9A68;
   --theme-error: #D05D5D;
 
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
+
   /* Tailwind RGB Channels */
   --c-background: 20 24 36;
   --c-surface: 20 24 36;
@@ -155,6 +176,13 @@
   --theme-contrast: #000000;
   --theme-success: #4E9A68;
   --theme-error: #D05D5D;
+
+  /* Reader Variables Mapped to Active Theme */
+  --reader-bg: var(--theme-bg);
+  --reader-fg: var(--theme-ink);
+  --reader-muted: var(--theme-muted);
+  --reader-border: var(--theme-hairline);
+  --reader-accent: var(--theme-accent);
 
   /* Tailwind RGB Channels */
   --c-background: 0 0 0;

@@ -747,7 +747,7 @@ export default function SettingsPage() {
               </Button>
               <Button
                 variant="primary"
-                className="flex-1 !bg-red-600 !text-white hover:!bg-red-700"
+                className="flex-1 bg-semantic-error text-contrast hover:opacity-90"
                 onClick={handleConfirmErase}
                 disabled={eraseConfirmInput !== 'ERASE' || isErasing}
               >

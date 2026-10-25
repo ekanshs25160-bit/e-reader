@@ -1,69 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTheme } from '@/components/common/ThemeProvider';
 
 const PALETTES = [
-  {
-    id: 'paper',
-    label: 'Paper Day',
-    subtitle: 'Natural Warmth',
-    cardBg: 'bg-[#FDFBF7]',
-    chipBg: 'bg-[#FAF8F5]',
-    chipText: 'text-[#111111]',
-    labelClass: 'text-primary',
-    isDark: false,
-    readerBg: '#faf9f6',
-    readerText: '#1a1c1a',
-  },
-  {
-    id: 'sepia',
-    label: 'Sepia',
-    subtitle: 'Warm Parchment',
-    cardBg: 'bg-[#F4ECD8]',
-    chipBg: 'bg-[#EFE4CB]',
-    chipText: 'text-[#2C2214]',
-    labelClass: 'text-[#5B472C]',
-    isDark: false,
-    readerBg: '#f4ecd8',
-    readerText: '#2c2214',
-  },
-  {
-    id: 'night',
-    label: 'Night',
-    subtitle: 'Deep Charcoal',
-    cardBg: 'bg-[#141824]',
-    chipBg: 'bg-[#1B2132]',
-    chipText: 'text-[#EAEAEA]',
-    labelClass: 'text-[#9EABBD]',
-    isDark: true,
-    readerBg: '#141824',
-    readerText: '#e6e4dd',
-  },
-  {
-    id: 'oled',
-    label: 'OLED',
-    subtitle: 'Pitch Black',
-    cardBg: 'bg-[#000000]',
-    chipBg: 'bg-[#101010]',
-    chipText: 'text-[#A0A0A0]',
-    labelClass: 'text-[#7A7A7A]',
-    isDark: true,
-    readerBg: '#000000',
-    readerText: '#cfcfcf',
-  },
-  {
-    id: 'auto',
-    label: 'Auto',
-    subtitle: 'Follow System',
-    cardBg: 'bg-surface-container-high/80',
-    chipBg: 'bg-surface-container-highest',
-    chipText: 'text-on-surface',
-    labelClass: 'text-primary',
-    isDark: false,
-    isAuto: true,
-    readerBg: '#faf9f6',
-    readerText: '#1a1c1a',
-  },
+  { id: 'paper', label: 'Paper', subtitle: 'Natural Warmth', isDark: false },
+  { id: 'sepia', label: 'Sepia', subtitle: 'Warm Parchment', isDark: false },
+  { id: 'night', label: 'Night', subtitle: 'Deep Charcoal', isDark: true },
+  { id: 'oled', label: 'OLED', subtitle: 'Pitch Black', isDark: true },
+  { id: 'auto', label: 'Auto', subtitle: 'Follow System', isDark: false, isAuto: true },
 ];
 
 const TYPEFACES = [
@@ -150,6 +95,9 @@ export default function SettingsMenu({
     spread: 'auto',
   };
 
+  const { setThemeMode } = useTheme();
+  const handlePaletteSelect = (id) => { setThemeMode(id); update({ palette: id, theme: id }); };
+
   const update = (patch) => {
     if (onChangeSettings) {
       onChangeSettings({ ...current, ...patch });
@@ -179,9 +127,9 @@ export default function SettingsMenu({
     <aside
       aria-label="Appearance settings"
       style={{
-        backgroundColor: 'var(--reader-bg, #FAF9F6)',
-        borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
-        color: 'var(--reader-fg, #152A41)',
+        backgroundColor: 'var(--reader-bg)',
+        borderColor: 'var(--reader-border)',
+        color: 'var(--reader-fg)',
       }}
       className="fixed z-50 flex flex-col select-none overflow-hidden transition-all duration-300
         /* Phone: docked bottom sheet (rounded-t-3xl, up to 58% height) */
@@ -194,12 +142,12 @@ export default function SettingsMenu({
         {/* On mobile: Tactile smooth center drag bar. On desktop: Appearance title */}
         <div className="md:hidden w-6" />
         <div
-          style={{ backgroundColor: 'var(--reader-border, #C4C6CD)' }}
+          style={{ backgroundColor: 'var(--reader-border)' }}
           className="md:hidden w-10 h-1 rounded-full transition-colors"
         />
         <div className="hidden md:flex items-center gap-2">
-          <span style={{ color: 'var(--reader-fg, #152A41)' }} className="material-symbols-outlined text-[20px]">tune</span>
-          <h2 style={{ color: 'var(--reader-fg, #152A41)' }} className="font-headline-sm text-sm font-semibold tracking-tight">Appearance</h2>
+          <span style={{ color: 'var(--reader-fg)' }} className="material-symbols-outlined text-[20px]">tune</span>
+          <h2 style={{ color: 'var(--reader-fg)' }} className="font-headline-sm text-sm font-semibold tracking-tight">Appearance</h2>
         </div>
 
         {/* Close Button */}
@@ -207,7 +155,7 @@ export default function SettingsMenu({
           aria-label="Close appearance settings"
           title="Close appearance settings"
           onClick={onClose}
-          style={{ color: 'var(--reader-muted, #43474D)' }}
+          style={{ color: 'var(--reader-muted)' }}
           className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80 transition-colors active:scale-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           type="button"
         >
@@ -219,7 +167,7 @@ export default function SettingsMenu({
       <div className="px-5 pt-1 pb-3 shrink-0">
         <div
           style={{
-            borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+            borderColor: 'var(--reader-border)',
             backgroundColor: 'rgba(128, 128, 128, 0.08)',
           }}
           className="p-1 rounded-full border flex items-center shadow-inner"
@@ -234,11 +182,11 @@ export default function SettingsMenu({
                 style={
                   isTabActive
                     ? {
-                        backgroundColor: 'var(--reader-fg, #152A41)',
-                        color: 'var(--reader-bg, #FAF9F6)',
+                        backgroundColor: 'var(--reader-fg)',
+                        color: 'var(--reader-bg)',
                       }
                     : {
-                        color: 'var(--reader-muted, #43474D)',
+                        color: 'var(--reader-muted)',
                       }
                 }
                 className="flex-1 py-1.5 px-3 rounded-full font-label-md text-label-md transition-all duration-150 text-center font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -261,13 +209,13 @@ export default function SettingsMenu({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Typeface
                 </span>
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-caption text-caption opacity-80"
                 >
                   {activeTypeface.category}
@@ -286,14 +234,14 @@ export default function SettingsMenu({
                       style={
                         isSelected
                           ? {
-                              backgroundColor: 'var(--reader-fg, #152A41)',
-                              color: 'var(--reader-bg, #FAF9F6)',
-                              borderColor: 'var(--reader-fg, #152A41)',
+                              backgroundColor: 'var(--reader-fg)',
+                              color: 'var(--reader-bg)',
+                              borderColor: 'var(--reader-fg)',
                             }
                           : {
-                              borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                              borderColor: 'var(--reader-border)',
                               backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                              color: 'var(--reader-fg, #152A41)',
+                              color: 'var(--reader-fg)',
                             }
                       }
                       className="py-2 px-2.5 rounded-xl flex items-center border active:scale-95 transition-all text-left focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none justify-between shadow-xs"
@@ -319,7 +267,7 @@ export default function SettingsMenu({
 
               {/* Editorial Font Caption */}
               <p
-                style={{ color: 'var(--reader-muted, #43474D)' }}
+                style={{ color: 'var(--reader-muted)' }}
                 className="font-caption text-[11px] italic pt-0.5 text-center opacity-80"
               >
                 {activeTypeface.caption}
@@ -330,7 +278,7 @@ export default function SettingsMenu({
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Size
@@ -338,8 +286,8 @@ export default function SettingsMenu({
                 <span
                   style={{
                     backgroundColor: 'rgba(128, 128, 128, 0.08)',
-                    borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
-                    color: 'var(--reader-fg, #152A41)',
+                    borderColor: 'var(--reader-border)',
+                    color: 'var(--reader-fg)',
                   }}
                   className="px-2 py-0.5 rounded-full font-label-sm text-caption font-semibold border"
                 >
@@ -349,7 +297,7 @@ export default function SettingsMenu({
               <div
                 style={{
                   backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                  borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                  borderColor: 'var(--reader-border)',
                 }}
                 className="flex items-center space-x-3 p-2.5 rounded-xl border"
               >
@@ -358,7 +306,7 @@ export default function SettingsMenu({
                   type="button"
                   aria-label="Decrease font size"
                   onClick={() => update({ fontSize: Math.max(14, currentFontSize - 1) })}
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-headline-sm text-[13px] font-medium select-none pl-1 transition-colors hover:opacity-80 active:scale-95"
                 >
                   A
@@ -381,7 +329,7 @@ export default function SettingsMenu({
                   type="button"
                   aria-label="Increase font size"
                   onClick={() => update({ fontSize: Math.min(28, currentFontSize + 1) })}
-                  style={{ color: 'var(--reader-fg, #152A41)' }}
+                  style={{ color: 'var(--reader-fg)' }}
                   className="font-headline-sm text-[20px] font-medium select-none pr-1 transition-colors hover:opacity-80 active:scale-95"
                 >
                   A
@@ -400,13 +348,13 @@ export default function SettingsMenu({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Alignment
                 </span>
                 <span
-                  style={{ color: 'var(--reader-accent, #855224)' }}
+                  style={{ color: 'var(--reader-accent)' }}
                   className="font-caption text-caption capitalize font-medium"
                 >
                   {currentAlign}
@@ -427,14 +375,14 @@ export default function SettingsMenu({
                       style={
                         isSelected
                           ? {
-                              backgroundColor: 'var(--reader-fg, #152A41)',
-                              color: 'var(--reader-bg, #FAF9F6)',
-                              borderColor: 'var(--reader-fg, #152A41)',
+                              backgroundColor: 'var(--reader-fg)',
+                              color: 'var(--reader-bg)',
+                              borderColor: 'var(--reader-fg)',
                             }
                           : {
-                              borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                              borderColor: 'var(--reader-border)',
                               backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                              color: 'var(--reader-muted, #43474D)',
+                              color: 'var(--reader-muted)',
                             }
                       }
                       className="py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-label-md text-xs border transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -451,13 +399,13 @@ export default function SettingsMenu({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Line Height
                 </span>
                 <span
-                  style={{ color: 'var(--reader-accent, #855224)' }}
+                  style={{ color: 'var(--reader-accent)' }}
                   className="font-caption text-caption font-medium"
                 >
                   {currentLineHeight === '1.4'
@@ -484,14 +432,14 @@ export default function SettingsMenu({
                       style={
                         isSelected
                           ? {
-                              backgroundColor: 'var(--reader-fg, #152A41)',
-                              color: 'var(--reader-bg, #FAF9F6)',
-                              borderColor: 'var(--reader-fg, #152A41)',
+                              backgroundColor: 'var(--reader-fg)',
+                              color: 'var(--reader-bg)',
+                              borderColor: 'var(--reader-fg)',
                             }
                           : {
-                              borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                              borderColor: 'var(--reader-border)',
                               backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                              color: 'var(--reader-muted, #43474D)',
+                              color: 'var(--reader-muted)',
                             }
                       }
                       className="py-2 px-2.5 rounded-xl font-label-md text-xs border transition-all active:scale-95 text-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -507,13 +455,13 @@ export default function SettingsMenu({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Margins
                 </span>
                 <span
-                  style={{ color: 'var(--reader-accent, #855224)' }}
+                  style={{ color: 'var(--reader-accent)' }}
                   className="font-caption text-caption capitalize font-medium"
                 >
                   {rawMargins}
@@ -522,7 +470,7 @@ export default function SettingsMenu({
               <div
                 style={{
                   backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                  borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                  borderColor: 'var(--reader-border)',
                 }}
                 className="p-3 rounded-xl border space-y-2"
               >
@@ -545,8 +493,8 @@ export default function SettingsMenu({
                       style={{
                         color:
                           marginStepIndex === idx
-                            ? 'var(--reader-fg, #152A41)'
-                            : 'var(--reader-muted, #43474D)',
+                            ? 'var(--reader-fg)'
+                            : 'var(--reader-muted)',
                         fontWeight: marginStepIndex === idx ? 700 : 500,
                       }}
                       className="capitalize transition-colors hover:opacity-80"
@@ -562,13 +510,13 @@ export default function SettingsMenu({
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <span
-                  style={{ color: 'var(--reader-muted, #43474D)' }}
+                  style={{ color: 'var(--reader-muted)' }}
                   className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
                 >
                   Page Layout
                 </span>
                 <span
-                  style={{ color: 'var(--reader-accent, #855224)' }}
+                  style={{ color: 'var(--reader-accent)' }}
                   className="font-caption text-caption capitalize font-medium"
                 >
                   {currentSpread === 'auto'
@@ -585,14 +533,14 @@ export default function SettingsMenu({
                   style={
                     currentSpread === 'auto'
                       ? {
-                          backgroundColor: 'var(--reader-fg, #152A41)',
-                          color: 'var(--reader-bg, #FAF9F6)',
-                          borderColor: 'var(--reader-fg, #152A41)',
+                          backgroundColor: 'var(--reader-fg)',
+                          color: 'var(--reader-bg)',
+                          borderColor: 'var(--reader-fg)',
                         }
                       : {
-                          borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                          borderColor: 'var(--reader-border)',
                           backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                          color: 'var(--reader-muted, #43474D)',
+                          color: 'var(--reader-muted)',
                         }
                   }
                   className="py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-label-md text-xs border transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -606,14 +554,14 @@ export default function SettingsMenu({
                   style={
                     currentSpread === 'none'
                       ? {
-                          backgroundColor: 'var(--reader-fg, #152A41)',
-                          color: 'var(--reader-bg, #FAF9F6)',
-                          borderColor: 'var(--reader-fg, #152A41)',
+                          backgroundColor: 'var(--reader-fg)',
+                          color: 'var(--reader-bg)',
+                          borderColor: 'var(--reader-fg)',
                         }
                       : {
-                          borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                          borderColor: 'var(--reader-border)',
                           backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                          color: 'var(--reader-muted, #43474D)',
+                          color: 'var(--reader-muted)',
                         }
                   }
                   className="py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-label-md text-xs border transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -628,14 +576,14 @@ export default function SettingsMenu({
                     style={
                       currentSpread === 'two'
                         ? {
-                            backgroundColor: 'var(--reader-fg, #152A41)',
-                            color: 'var(--reader-bg, #FAF9F6)',
-                            borderColor: 'var(--reader-fg, #152A41)',
+                            backgroundColor: 'var(--reader-fg)',
+                            color: 'var(--reader-bg)',
+                            borderColor: 'var(--reader-fg)',
                           }
                         : {
-                            borderColor: 'var(--reader-border, rgba(0,0,0,0.15))',
+                            borderColor: 'var(--reader-border)',
                             backgroundColor: 'rgba(128, 128, 128, 0.06)',
-                            color: 'var(--reader-muted, #43474D)',
+                            color: 'var(--reader-muted)',
                           }
                     }
                     className="py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-label-md text-xs border transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shadow-xs"
@@ -656,13 +604,13 @@ export default function SettingsMenu({
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between">
               <span
-                style={{ color: 'var(--reader-muted, #43474D)' }}
+                style={{ color: 'var(--reader-muted)' }}
                 className="font-label-sm text-[11px] font-semibold tracking-wider uppercase"
               >
                 Palette
               </span>
               <span
-                style={{ color: 'var(--reader-accent, #855224)' }}
+                style={{ color: 'var(--reader-accent)' }}
                 className="font-caption text-caption font-medium"
               >
                 {activePalette.subtitle}
@@ -677,32 +625,23 @@ export default function SettingsMenu({
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => update({ palette: p.id, theme: p.id })}
-                    style={
+                    data-theme={p.id !== 'auto' ? p.id : undefined}
+                    onClick={() => handlePaletteSelect(p.id)}
+                    className={`flex flex-col items-center p-2 rounded-xl bg-surface border ${
                       isSelected
-                        ? {
-                            borderColor: 'var(--reader-accent, #855224)',
-                            boxShadow: '0 0 0 2px var(--reader-accent, #855224)',
-                          }
-                        : undefined
-                    }
-                    className={`flex flex-col items-center p-2 rounded-xl ${p.cardBg} ${
-                      isSelected
-                        ? 'border-2'
-                        : p.isDark
-                        ? 'border border-white/10 hover:border-white/25'
-                        : 'border border-black/10 hover:border-black/25'
-                    } active:scale-95 transition-all text-left group focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none`}
+                        ? 'border-accent ring-2 ring-accent'
+                        : 'border-hairline hover:border-hairline/80'
+                    } active:scale-95 transition-all text-left group focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none`}
                   >
                     <div
-                      className={`w-full h-8 rounded-lg ${p.chipBg} border border-black/[0.05] flex items-center justify-center mb-1.5`}
+                      className="w-full h-8 rounded-lg bg-surface-container border border-hairline flex items-center justify-center mb-1.5"
                     >
                       {p.isAuto ? (
-                        <span className="material-symbols-outlined text-[18px] text-on-surface">
+                        <span className="material-symbols-outlined text-[18px] text-muted">
                           brightness_auto
                         </span>
                       ) : (
-                        <span className={`font-headline-sm text-sm font-medium ${p.chipText}`}>
+                        <span className="font-headline-sm text-sm font-medium text-ink">
                           Aa
                         </span>
                       )}
@@ -710,11 +649,11 @@ export default function SettingsMenu({
                     <span
                       className={`font-label-sm text-[11px] ${
                         isSelected ? 'font-semibold' : 'font-medium'
-                      } ${p.labelClass} truncate`}
+                      } text-ink truncate`}
                     >
                       {p.label}
                     </span>
-                    <span className="font-caption text-[10px] text-on-surface-variant/70 truncate">
+                    <span className="font-caption text-[10px] text-muted truncate">
                       {p.subtitle}
                     </span>
                   </button>

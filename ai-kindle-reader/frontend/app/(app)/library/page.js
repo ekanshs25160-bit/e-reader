@@ -17,30 +17,6 @@ import {
   Skeleton,
 } from '@/components/ui';
 
-const SPINE_TONES = [
-  { bg: '#152A41', text: '#FAF9F6', accent: '#855224' }, // Navy / Bronze
-  { bg: '#223348', text: '#E3E9F0', accent: '#97ACC8' }, // Deep Slate
-  { bg: '#2D4237', text: '#E2EDE6', accent: '#A3C2B0' }, // Forest
-  { bg: '#5C4033', text: '#F5EBE6', accent: '#D2B48C' }, // Leather
-  { bg: '#4A5859', text: '#ECEFED', accent: '#B0C2C3' }, // Sage
-  { bg: '#3A2E39', text: '#EDDFE7', accent: '#CBB3C2' }, // Aubergine
-];
-
-function hashString(str) {
-  let hash = 0;
-  const s = String(str || '');
-  for (let i = 0; i < s.length; i++) {
-    hash = (hash << 5) - hash + s.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-function getSpineTone(id) {
-  const h = hashString(id);
-  return SPINE_TONES[h % SPINE_TONES.length];
-}
-
 function getAuthorInitials(author) {
   const parts = String(author || 'Unknown').trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -51,7 +27,6 @@ function getAuthorInitials(author) {
  * Flat Shelf Spine (Editorial spec: flat ink/bronze tones, no 3D gradients or shadows)
  */
 function FlatShelfSpine({ book }) {
-  const tone = useMemo(() => getSpineTone(book.id), [book.id]);
   const authorInitials = useMemo(() => getAuthorInitials(book.author), [book.author]);
 
   const pages = Number(book.totalPages || book.pages) || 0;
@@ -65,37 +40,26 @@ function FlatShelfSpine({ book }) {
       href={`/reader/${encodeURIComponent(book.id)}`}
       style={{
         height: `${heightPx}px`,
-        backgroundColor: tone.bg,
-        color: tone.text,
       }}
-      className="group relative flex-shrink-0 w-11 rounded-t-[4px] p-2 flex flex-col justify-between border-l border-hairline/30 select-none transition-transform duration-200 hover:-translate-y-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group relative flex-shrink-0 w-11 rounded-t-[4px] p-2 flex flex-col justify-between bg-surface border-l border-t border-r border-hairline text-ink select-none transition-transform duration-200 hover:-translate-y-2 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       title={`${book.title} by ${book.author}`}
       aria-label={`${book.title} by ${book.author}`}
     >
-      <div className="flex justify-between items-center w-full border-b border-white/20 pb-1">
-        <span
-          style={{ color: tone.accent }}
-          className="text-[7.5px] font-sans tracking-widest uppercase truncate max-w-[24px]"
-        >
+      <div className="flex justify-between items-center w-full border-b border-hairline pb-1">
+        <span className="text-[7.5px] font-sans tracking-widest uppercase truncate max-w-[24px] text-muted">
           {book.year ? String(book.year).slice(-2) : '•'}
         </span>
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: tone.accent }}
-        />
+        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
       </div>
 
       <div className="flex-1 flex items-center justify-center overflow-hidden py-1">
-        <span className="font-serif text-[11px] tracking-wider uppercase font-normal truncate -rotate-90 whitespace-nowrap block">
+        <span className="font-serif text-[11px] tracking-wider uppercase font-normal truncate -rotate-90 whitespace-nowrap block text-ink">
           {book.title}
         </span>
       </div>
 
-      <div className="border-t border-white/20 pt-1 text-center">
-        <span
-          style={{ color: tone.accent }}
-          className="font-sans font-medium text-[8px] tracking-wider"
-        >
+      <div className="border-t border-hairline pt-1 text-center">
+        <span className="font-sans font-medium text-[8px] tracking-wider text-muted">
           {authorInitials}
         </span>
       </div>

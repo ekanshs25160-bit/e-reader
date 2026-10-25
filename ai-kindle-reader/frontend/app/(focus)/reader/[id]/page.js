@@ -28,6 +28,7 @@ import {
 } from "@/utils/db";
 import { downloadEpub, lookupWord } from "@/lib/api";
 import { pluralize } from "@/lib/format";
+import { useTheme } from "@/components/common/ThemeProvider";
 
 const STATIC_GUTENBERG_BOOKS = {
   "2701": { title: "Moby Dick", author: "Herman Melville" },
@@ -165,7 +166,7 @@ function ReaderContent() {
   const [bookmarks, setBookmarks] = useState([]);
   const [highlights, setHighlights] = useState([]);
   const [toc, setToc] = useState([]);
-  const [activeHighlightColor, setActiveHighlightColor] = useState("#F3D382");
+  const [activeHighlightColor, setActiveHighlightColor] = useState("var(--reader-accent)");
 
   // UI Overlays & HUD: showHud defaults to false (controls hidden), toggled when tapping center
   const [showHud, setShowHud] = useState(false);
@@ -223,9 +224,10 @@ function ReaderContent() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const chosenPalette = readerSettings?.palette || readerSettings?.theme || "paper";
+  const { themeMode, palette: appPalette } = useTheme();
+  const chosenPalette = themeMode || readerSettings?.palette || readerSettings?.theme || "paper";
   const effectivePaletteId =
-    chosenPalette === "auto" ? (isSysDark ? "night" : "paper") : chosenPalette;
+    appPalette || (chosenPalette === "auto" ? (isSysDark ? "night" : "paper") : chosenPalette);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -622,10 +624,10 @@ function ReaderContent() {
   }, [selectedData]);
 
   // 6. Highlight Selection Handler
-  const handleAddHighlight = async (color = "#F3D382") => {
+  const handleAddHighlight = async (color = "var(--reader-accent)") => {
     if (!selectedData?.text) return;
     const cfiRange = selectedData.cfiRange || currentCfi || null;
-    const chosenColor = color === "underline" ? "#F3D382" : color;
+    const chosenColor = color === "underline" ? "var(--reader-accent)" : color;
     setActiveHighlightColor(chosenColor);
 
     const highlightEntry = {
@@ -963,7 +965,7 @@ function ReaderContent() {
             >
               {isReDownloading ? (
                 <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span className="w-4 h-4 border-2 border-contrast border-t-transparent rounded-full animate-spin"></span>
                   <span>Downloading EPUB...</span>
                 </>
               ) : (
@@ -1696,88 +1698,24 @@ function ReaderContent() {
               </span>
               {/* Swatches with 44px touch targets */}
               <div className="flex items-center space-x-0.5 ml-1">
-                {/* Ochre */}
+                {/* Bronze Accent Highlight */}
                 <button
                   type="button"
-                  onClick={() => handleAddHighlight("#F3D382")}
-                  aria-label="Warm Ochre Highlight"
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                  onClick={() => handleAddHighlight("var(--reader-accent)")}
+                  aria-label="Highlight passage"
+                  title="Highlight passage"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
                 >
                   <span
-                    className={`w-6 h-6 rounded-full bg-[#F3D382] flex items-center justify-center shadow-xs transition-transform ${
-                      activeHighlightColor === "#F3D382"
-                        ? "border-2 border-primary"
-                        : "border border-black/5 hover:ring-2 hover:ring-outline-variant/50"
+                    className={`w-6 h-6 rounded-full bg-accent flex items-center justify-center shadow-xs transition-transform ${
+                      activeHighlightColor === "var(--reader-accent)"
+                        ? "border-2 border-ink"
+                        : "border border-hairline"
                     }`}
                   >
-                    {activeHighlightColor === "#F3D382" && (
-                      <span className="material-symbols-outlined text-[14px] font-bold" style={{ color: "inherit" }} data-icon="check">
-                        check
-                      </span>
-                    )}
-                  </span>
-                </button>
-                {/* Rose */}
-                <button
-                  type="button"
-                  onClick={() => handleAddHighlight("#F8B4B4")}
-                  aria-label="Soft Rose Highlight"
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full bg-[#F8B4B4] flex items-center justify-center shadow-xs transition-transform ${
-                      activeHighlightColor === "#F8B4B4"
-                        ? "border-2 border-primary"
-                        : "border border-black/5 hover:ring-2 hover:ring-outline-variant/50"
-                    }`}
-                  >
-                    {activeHighlightColor === "#F8B4B4" && (
-                      <span className="material-symbols-outlined text-[14px] font-bold" style={{ color: "inherit" }} data-icon="check">
-                        check
-                      </span>
-                    )}
-                  </span>
-                </button>
-                {/* Sky Blue */}
-                <button
-                  type="button"
-                  onClick={() => handleAddHighlight("#A7D2FB")}
-                  aria-label="Sky Blue Highlight"
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full bg-[#A7D2FB] flex items-center justify-center shadow-xs transition-transform ${
-                      activeHighlightColor === "#A7D2FB"
-                        ? "border-2 border-primary"
-                        : "border border-black/5 hover:ring-2 hover:ring-outline-variant/50"
-                    }`}
-                  >
-                    {activeHighlightColor === "#A7D2FB" && (
-                      <span className="material-symbols-outlined text-[14px] font-bold" style={{ color: "inherit" }} data-icon="check">
-                        check
-                      </span>
-                    )}
-                  </span>
-                </button>
-                {/* Sage Green */}
-                <button
-                  type="button"
-                  onClick={() => handleAddHighlight("#B7DEBD")}
-                  aria-label="Sage Green Highlight"
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:opacity-80 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full bg-[#B7DEBD] flex items-center justify-center shadow-xs transition-transform ${
-                      activeHighlightColor === "#B7DEBD"
-                        ? "border-2 border-primary"
-                        : "border border-black/5 hover:ring-2 hover:ring-outline-variant/50"
-                    }`}
-                  >
-                    {activeHighlightColor === "#B7DEBD" && (
-                      <span className="material-symbols-outlined text-[14px] font-bold" style={{ color: "inherit" }} data-icon="check">
-                        check
-                      </span>
-                    )}
+                    <span className="material-symbols-outlined text-[14px] text-background font-bold" data-icon="check">
+                      check
+                    </span>
                   </span>
                 </button>
               </div>

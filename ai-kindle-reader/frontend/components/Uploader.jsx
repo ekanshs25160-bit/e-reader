@@ -196,7 +196,7 @@ export default function Uploader({
   // Full-featured Modal Dialog layout when open={true}
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-ink/40 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div

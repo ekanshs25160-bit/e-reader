@@ -9,15 +9,18 @@ import React, {
   useImperativeHandle,
 } from "react";
 import ePub from "epubjs";
+import { READER_PALETTES } from "@/app/(focus)/reader/[id]/page";
 
-const THEME_PALETTES = {
-  day: { bg: "#FAF9F6", text: "#152A41", outer: "#FAF9F6" },
-  paper: { bg: "#FAF9F6", text: "#152A41", outer: "#FAF9F6" },
-  sepia: { bg: "#F4ECD8", text: "#2C2214", outer: "#F4ECD8" },
-  night: { bg: "#141824", text: "#F0F2F5", outer: "#141824" },
-  oled: { bg: "#000000", text: "#EDEDED", outer: "#000000" },
-  dark: { bg: "#141824", text: "#F0F2F5", outer: "#141824" },
-};
+const THEME_PALETTES = new Proxy({}, {
+  get(target, prop) {
+    const key = prop === "day" ? "paper" : prop === "dark" ? "night" : prop;
+    const p = (typeof READER_PALETTES !== "undefined" && READER_PALETTES?.[key]) || READER_PALETTES?.paper;
+    if (p) {
+      return { bg: p.bg, text: p.fg, outer: p.bg };
+    }
+    return { bg: "var(--reader-bg)", text: "var(--reader-fg)", outer: "var(--reader-bg)" };
+  }
+});
 
 /**
  * Breakpoints: phone < 768px, tablet 768-1023px, desktop >= 1024px.
@@ -179,7 +182,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
     }
   }, [onUserInteraction]);
 
-  const renderHighlight = useCallback((cfiRange, color = "#F3D382", id = null) => {
+  const renderHighlight = useCallback((cfiRange, color = "var(--theme-accent, var(--reader-accent))", id = null) => {
     if (renditionRef.current && cfiRange) {
       try {
         renditionRef.current.annotations.highlight(
@@ -188,7 +191,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
           () => {},
           "flyleaf-highlight",
           {
-            fill: color || "#F3D382",
+            fill: color || "var(--theme-accent, var(--reader-accent))",
             "fill-opacity": "0.42",
             "mix-blend-mode": "multiply",
           }
@@ -306,8 +309,8 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
         "scrollbar-width": "none !important",
       },
       "::selection": {
-        background: "#ffdcc3 !important",
-        color: "#2e1500 !important",
+        background: "rgba(133, 82, 36, 0.25) !important",
+        color: `${palette.text} !important`,
       },
       p: {
         "text-align": `${chosenAlign} !important`,
@@ -1248,7 +1251,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
           className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-opacity-90 backdrop-blur-md"
         >
           <div
-            style={{ borderColor: "var(--reader-accent, #855224)" }}
+            style={{ borderColor: "var(--reader-accent)" }}
             className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-3"
           />
           <p
@@ -1336,7 +1339,7 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
                   {fallbackContent?.chapter || fallbackContent?.title || "CHAPTER I."}
                 </h1>
                 <div
-                  style={{ backgroundColor: "var(--reader-border, rgba(128,128,128,0.2))" }}
+                  style={{ backgroundColor: "var(--reader-border)" }}
                   className="w-12 h-px mx-auto mt-4"
                 />
               </header>

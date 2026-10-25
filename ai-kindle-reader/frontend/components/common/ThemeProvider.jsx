@@ -7,10 +7,12 @@ import FirstRunDialog from '@/components/FirstRunDialog';
 import { settingsStore } from '@/utils/db';
 
 const ThemeContext = createContext({
-  themeMode: 'day',
+  themeMode: 'auto',
   palette: 'paper',
+  resolvedPalette: 'paper',
   setPalette: () => {},
   setThemeMode: () => {},
+  cycleTheme: () => {},
   toggleDayNight: () => {},
   isNight: false,
   userName: 'Reader',
@@ -81,20 +83,37 @@ export function ThemeProvider({ children }) {
       }).catch(() => {});
     }
 
-    // 3. System color scheme listener
+    // 3. System color scheme listener & cross-window theme sync
+    const handleStorage = (e) => {
+      if (e.key === 'flyleaf-theme' && e.newValue) {
+        setThemeModeState(e.newValue);
+      }
+    };
+    const handleCustom = (e) => {
+      if (e.detail?.theme) {
+        setThemeModeState(e.detail.theme);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('flyleaf-theme-change', handleCustom);
+
+    let mq;
+    let mqHandler;
     if (typeof window !== 'undefined' && window.matchMedia) {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq = window.matchMedia('(prefers-color-scheme: dark)');
       setSystemDark(mq.matches);
-      const handler = (e) => setSystemDark(e.matches);
-      mq.addEventListener?.('change', handler);
-      return () => {
-        active = false;
-        mq.removeEventListener?.('change', handler);
-      };
+      mqHandler = (e) => setSystemDark(e.matches);
+      mq.addEventListener?.('change', mqHandler);
     }
 
     return () => {
       active = false;
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('flyleaf-theme-change', handleCustom);
+      if (mq && mqHandler) {
+        mq.removeEventListener?.('change', mqHandler);
+      }
     };
   }, []);
 
@@ -127,6 +146,8 @@ export function ThemeProvider({ children }) {
     }
   }, [resolvedPalette]);
 
+  const THEME_CYCLE = ['auto', 'paper', 'sepia', 'night', 'oled'];
+
   const setPalette = useCallback((p) => {
     setThemeModeState(p);
     try {
@@ -134,14 +155,36 @@ export function ThemeProvider({ children }) {
     } catch {}
     if (settingsStore) {
       settingsStore.getItem('reader_settings').then((cur) => {
-        settingsStore.setItem('reader_settings', { ...(cur || {}), themeMode: p, palette: p });
+        settingsStore.setItem('reader_settings', { ...(cur || {}), themeMode: p, palette: p, theme: p });
       }).catch(() => {});
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flyleaf-theme-change', { detail: { theme: p } }));
     }
   }, []);
 
   const setThemeMode = useCallback((mode) => {
     setPalette(mode);
   }, [setPalette]);
+
+  const cycleTheme = useCallback(() => {
+    setThemeModeState((cur) => {
+      const idx = THEME_CYCLE.indexOf(cur);
+      const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+      try {
+        localStorage.setItem('flyleaf-theme', next);
+      } catch {}
+      if (settingsStore) {
+        settingsStore.getItem('reader_settings').then((s) => {
+          settingsStore.setItem('reader_settings', { ...(s || {}), themeMode: next, palette: next, theme: next });
+        }).catch(() => {});
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flyleaf-theme-change', { detail: { theme: next } }));
+      }
+      return next;
+    });
+  }, []);
 
   const toggleDayNight = useCallback(() => {
     setPalette(isNight ? 'paper' : 'night');
@@ -202,8 +245,10 @@ export function ThemeProvider({ children }) {
       value={{
         themeMode,
         palette: resolvedPalette,
+        resolvedPalette,
         setPalette,
         setThemeMode,
+        cycleTheme,
         toggleDayNight,
         isNight,
         userName,

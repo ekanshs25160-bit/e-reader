@@ -47,7 +47,7 @@ export default function PageFurniture({
           }`}
         >
           <p
-            style={{ color: "var(--reader-muted, #727782)" }}
+            style={{ color: "var(--reader-muted)" }}
             className="font-label-sm text-[12px] tracking-wide truncate max-w-xl text-center opacity-75"
           >
             {runningHeadText}
@@ -70,7 +70,7 @@ export default function PageFurniture({
               {/* Left page footer */}
               <div className="w-1/2 flex justify-start pl-2">
                 <span
-                  style={{ color: "var(--reader-muted, #727782)" }}
+                  style={{ color: "var(--reader-muted)" }}
                   className="font-label-sm text-[12px] tabular-nums tracking-normal opacity-75"
                 >
                   {leftFooterText}
@@ -80,7 +80,7 @@ export default function PageFurniture({
               {/* Right page footer */}
               <div className="w-1/2 flex justify-end pr-2">
                 <span
-                  style={{ color: "var(--reader-muted, #727782)" }}
+                  style={{ color: "var(--reader-muted)" }}
                   className="font-label-sm text-[12px] tabular-nums tracking-normal opacity-75"
                 >
                   {rightFooterText}
@@ -90,13 +90,13 @@ export default function PageFurniture({
           ) : (
             <div className="w-full flex items-center justify-between">
               <span
-                style={{ color: "var(--reader-muted, #727782)" }}
+                style={{ color: "var(--reader-muted)" }}
                 className="font-label-sm text-[12px] tabular-nums tracking-normal opacity-75"
               >
                 {leftFooterText}
               </span>
               <span
-                style={{ color: "var(--reader-muted, #727782)" }}
+                style={{ color: "var(--reader-muted)" }}
                 className="font-label-sm text-[12px] tabular-nums tracking-normal opacity-75"
               >
                 {rightFooterText}

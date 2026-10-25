@@ -8,8 +8,8 @@ export default function manifest() {
     scope: '/',
     display: 'standalone',
     orientation: 'any',
-    background_color: '#FBF9F4',
-    theme_color: '#7A4F2B',
+    background_color: '#FAF9F6',
+    theme_color: '#855224',
     categories: ['books'],
     icons: [
       {
