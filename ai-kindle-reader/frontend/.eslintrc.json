@@ -13,6 +13,43 @@
           ["parent", "sibling", "index"]
         ]
       }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "@/features/*/*",
+              "@/features/*/*/**"
+            ],
+            "message": "Features should be imported only through their public index.js API (e.g. '@/features/<name>')."
+          }
+        ]
+      }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/**/*.{js,ts}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/components/**",
+                  "@/features/**",
+                  "react",
+                  "react-dom"
+                ],
+                "message": "lib/ must not import React components or UI features."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

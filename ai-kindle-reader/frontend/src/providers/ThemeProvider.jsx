@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import Uploader from '@/components/Uploader';
+import { useUserProfile } from './useUserProfile';
 import FirstRunDialog from '@/components/FirstRunDialog';
+import Uploader from '@/components/Uploader';
 import { settingsStore } from '@/utils/db';
 
 const ThemeContext = createContext({
@@ -29,14 +30,18 @@ const THEME_CYCLE = ['auto', 'paper', 'sepia', 'night', 'oled'];
 export function ThemeProvider({ children }) {
   const [themeMode, setThemeModeState] = useState('paper');
   const [systemDark, setSystemDark] = useState(false);
-  const [userName, setUserNameState] = useState('Reader');
-  const [userAvatar, setUserAvatarState] = useState(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    let active = true;
+  const {
+    userName,
+    setUserName,
+    userAvatar,
+    setUserAvatar,
+    resetProfile,
+  } = useUserProfile();
 
+  useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('flyleaf-theme');
       if (
@@ -49,37 +54,7 @@ export function ThemeProvider({ children }) {
       ) {
         setThemeModeState(savedTheme);
       }
-      const savedName = localStorage.getItem('flyleaf-user-name');
-      if (savedName) {
-        setUserNameState(savedName.trim() || 'Reader');
-      }
-      const savedAvatar = localStorage.getItem('flyleaf-user-avatar');
-      if (savedAvatar) {
-        setUserAvatarState(savedAvatar);
-      }
     } catch {}
-
-    if (settingsStore) {
-      settingsStore.getItem('user_profile').then((profile) => {
-        if (!active || !profile) return;
-        if (profile.name) {
-          setUserNameState(profile.name.trim() || 'Reader');
-          try {
-            localStorage.setItem('flyleaf-user-name', profile.name.trim());
-          } catch {}
-        }
-        if (profile.avatar !== undefined) {
-          setUserAvatarState(profile.avatar);
-          try {
-            if (profile.avatar) {
-              localStorage.setItem('flyleaf-user-avatar', profile.avatar);
-            } else {
-              localStorage.removeItem('flyleaf-user-avatar');
-            }
-          } catch {}
-        }
-      }).catch(() => {});
-    }
 
     const handleStorage = (e) => {
       if (e.key === 'flyleaf-theme' && e.newValue) {
@@ -105,7 +80,6 @@ export function ThemeProvider({ children }) {
     }
 
     return () => {
-      active = false;
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('flyleaf-theme-change', handleCustom);
       if (mq && mqHandler) {
@@ -185,45 +159,13 @@ export function ThemeProvider({ children }) {
     setPalette(isNight ? 'paper' : 'night');
   }, [isNight, setPalette]);
 
-  const setUserName = useCallback((name) => {
-    const trimmed = (name || '').trim() || 'Reader';
-    setUserNameState(trimmed);
-    try {
-      localStorage.setItem('flyleaf-user-name', trimmed);
-    } catch {}
-    if (settingsStore) {
-      settingsStore.getItem('user_profile').then((cur) => {
-        settingsStore.setItem('user_profile', { ...(cur || {}), name: trimmed });
-      }).catch(() => {});
-    }
-  }, []);
-
-  const setUserAvatar = useCallback((dataUrlOrNull) => {
-    setUserAvatarState(dataUrlOrNull);
-    try {
-      if (dataUrlOrNull) {
-        localStorage.setItem('flyleaf-user-avatar', dataUrlOrNull);
-      } else {
-        localStorage.removeItem('flyleaf-user-avatar');
-      }
-    } catch {}
-    if (settingsStore) {
-      settingsStore.getItem('user_profile').then((cur) => {
-        settingsStore.setItem('user_profile', { ...(cur || {}), avatar: dataUrlOrNull });
-      }).catch(() => {});
-    }
-  }, []);
-
   const resetPreferences = useCallback(() => {
     setThemeModeState('day');
-    setUserNameState('Reader');
-    setUserAvatarState(null);
+    resetProfile();
     try {
       localStorage.removeItem('flyleaf-theme');
-      localStorage.removeItem('flyleaf-user-name');
-      localStorage.removeItem('flyleaf-user-avatar');
     } catch {}
-  }, []);
+  }, [resetProfile]);
 
   const showToast = useCallback((message) => {
     setToast(message);
