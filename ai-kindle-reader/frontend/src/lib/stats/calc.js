@@ -55,18 +55,19 @@ export function computeMedian(numbers) {
   return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
-export function buildWeeklyDays(dailyRecords, todayLocal = new Date()) {
+export function buildWeeklyDays(dailyRecords = [], todayLocal = new Date()) {
   const currentDayOfWeek = (todayLocal.getDay() + 6) % 7;
   const monday = new Date(todayLocal);
   monday.setDate(todayLocal.getDate() - currentDayOfWeek);
 
+  const records = Array.isArray(dailyRecords) ? dailyRecords : [];
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   return dayLabels.map((lbl, idx) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + idx);
     const dateStr = localDateKey(d);
 
-    const record = dailyRecords.find((r) => r.date === dateStr);
+    const record = records.find((r) => r.date === dateStr);
     const seconds = record ? record.seconds : 0;
     const pages = record ? record.pages : 0;
     const minutes = Math.floor(seconds / 60);

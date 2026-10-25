@@ -15,7 +15,7 @@ import {
   getLastSavedTimestamp,
   ensureStoresReady,
 } from './db';
-import { runStorageMigrations, CURRENT_SCHEMA_VERSION } from './migrations';
+import { runStorageMigrations, CURRENT_SCHEMA_VERSION, getStoredSchemaVersion } from './migrations';
 import {
   saveBook,
   getAllBooks,
@@ -88,6 +88,7 @@ export {
   getLastSavedTimestamp,
   ensureStoresReady,
   runStorageMigrations,
+  getStoredSchemaVersion,
   CURRENT_SCHEMA_VERSION,
   saveBook,
   getAllBooks,

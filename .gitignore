@@ -46,6 +46,7 @@ lerna-debug.log*
 *.sw?
 
 *designs
-*scripts
 *.kiro
-*tests
+scripts/out/
+
+

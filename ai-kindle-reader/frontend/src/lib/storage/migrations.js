@@ -22,8 +22,10 @@ export async function runStorageMigrations() {
 
   // Migration v1 -> v2: Ensure all books have integer progress (0-100) and string ids
   try {
-    await metaStore.iterate(async (book, key) => {
-      if (!book) return;
+    const keys = await metaStore.keys();
+    for (const key of keys) {
+      const book = await metaStore.getItem(key);
+      if (!book) continue;
       let changed = false;
       const updated = { ...book };
 
@@ -40,7 +42,7 @@ export async function runStorageMigrations() {
       if (changed) {
         await metaStore.setItem(String(key), updated);
       }
-    });
+    }
 
     localStorage.setItem(SCHEMA_VERSION_KEY, String(CURRENT_SCHEMA_VERSION));
     recordWriteTimestamp();
