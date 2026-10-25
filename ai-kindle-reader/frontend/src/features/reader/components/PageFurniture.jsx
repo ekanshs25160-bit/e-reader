@@ -55,10 +55,10 @@ export default function PageFurniture({
         </div>
       )}
 
-      {/* Bottom Page Furniture (Bottom Margin) - only hides on mobile if bottom nav is open, stays visible on desktop */}
+      {/* Bottom Page Furniture (Bottom Margin) - hides when bottom nav is open to prevent overlap */}
       <div
         className={`absolute bottom-4 left-0 right-0 flex justify-center px-8 transition-opacity duration-200 ${
-          isHidden ? "max-md:opacity-0" : "opacity-100"
+          isHidden ? "opacity-0" : "opacity-100"
         }`}
       >
         <div

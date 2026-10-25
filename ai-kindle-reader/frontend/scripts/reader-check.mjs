@@ -274,8 +274,34 @@ function report(viewport, palette, check, pass, detail = '') {
 // Seed the book into IndexedDB via the app's own DB API
 // ─────────────────────────────────────────────────────────────────────────────
 async function seedBook(page, epubBytes) {
+  const pageErrors = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+
   // Navigate to home first so we have the app's window context with localforage
-  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 }).catch(() =>
+    page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  );
+
+  let hasDb = await page.evaluate(async () => {
+    for (let i = 0; i < 80 && !window.__db?.saveBook; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return Boolean(window.__db?.saveBook);
+  }).catch(() => false);
+
+  if (!hasDb) {
+    await page.reload({ waitUntil: 'networkidle', timeout: 60000 }).catch(() => {});
+    hasDb = await page.evaluate(async () => {
+      for (let i = 0; i < 80 && !window.__db?.saveBook; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return Boolean(window.__db?.saveBook);
+    }).catch(() => false);
+  }
+
+  if (!hasDb && pageErrors.length > 0) {
+    console.error('    ⚠️  Page errors during seedBook:', pageErrors.join(' | '));
+  }
 
   const bookId = await page.evaluate(async (epubArray) => {
     // Reconstruct Uint8Array → Blob inside the browser
@@ -283,7 +309,7 @@ async function seedBook(page, epubBytes) {
     const blob = new Blob([bytes], { type: 'application/epub+zip' });
 
     // Wait for window.__db or fallback to IndexedDB directly
-    for (let i = 0; i < 50 && !window.__db?.saveBook; i++) {
+    for (let i = 0; i < 100 && !window.__db?.saveBook; i++) {
       await new Promise((r) => setTimeout(r, 100));
     }
     const saveBook = window.__db?.saveBook;
@@ -653,6 +679,70 @@ async function checkCfiAfterResize(page, vp) {
   return { ok: true, detail: `CFI stable: "${(cfiBeforeRaw || '').slice(0, 60)}"` };
 }
 
+/**
+ * 6. HUD stays hidden on ArrowRight and toggles only on center tap, with full-width bottom bar.
+ */
+async function checkHudAndBottomBar(page, vp) {
+  const afterArrowState = await page.evaluate(() => {
+    const header = document.querySelector('header');
+    const nav = document.querySelector('nav');
+    if (!header || !nav) return { ok: false, detail: 'header or nav missing' };
+    const hOpacity = getComputedStyle(header).opacity;
+    const nOpacity = getComputedStyle(nav).opacity;
+    return {
+      ok: hOpacity === '0' && nOpacity === '0',
+      detail: `after ArrowRight: header opacity=${hOpacity}, nav opacity=${nOpacity}`,
+    };
+  });
+  if (!afterArrowState.ok) return afterArrowState;
+
+  // Tap center of viewport to open HUD
+  await page.mouse.click(Math.round(vp.width / 2), Math.round(vp.height / 2));
+  await page.waitForTimeout(350);
+
+  const openState = await page.evaluate((vw) => {
+    const header = document.querySelector('header');
+    const nav = document.querySelector('nav');
+    if (!header || !nav) return { ok: false, detail: 'header or nav missing' };
+    const hOpacity = parseFloat(getComputedStyle(header).opacity);
+    const nOpacity = parseFloat(getComputedStyle(nav).opacity);
+    const navRect = nav.getBoundingClientRect();
+    const btns = Array.from(nav.querySelectorAll('button')).map((b) => b.getBoundingClientRect());
+    const fullWidthOk = Math.abs(navRect.width - vw) <= 2 && Math.abs(navRect.left) <= 1;
+    const orderOk =
+      btns.length === 3 &&
+      btns[0].left < btns[1].left &&
+      btns[1].right < btns[2].right &&
+      btns[2].right <= vw + 1;
+    if (hOpacity < 0.9 || nOpacity < 0.9 || !fullWidthOk || !orderOk) {
+      return {
+        ok: false,
+        detail: `on center tap: hOpacity=${hOpacity} nOpacity=${nOpacity} navWidth=${navRect.width}/${vw} orderOk=${orderOk}`,
+      };
+    }
+    return { ok: true, detail: `navWidth=${navRect.width}px` };
+  }, vp.width);
+  if (!openState.ok) return openState;
+
+  // Tap center again to close HUD
+  await page.mouse.click(Math.round(vp.width / 2), Math.round(vp.height / 2));
+  await page.waitForTimeout(350);
+
+  return page.evaluate(() => {
+    const header = document.querySelector('header');
+    const nav = document.querySelector('nav');
+    const hOpacity = getComputedStyle(header).opacity;
+    const nOpacity = getComputedStyle(nav).opacity;
+    if (hOpacity !== '0' || nOpacity !== '0') {
+      return {
+        ok: false,
+        detail: `after 2nd center tap: header opacity=${hOpacity}, nav opacity=${nOpacity}`,
+      };
+    }
+    return { ok: true, detail: 'hidden on arrow, full-width on center tap' };
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -783,7 +873,11 @@ async function main() {
           const contrast = await checkContrast(page, palette);
           report(vp.label, palette.name, 'Contrast ≥ 4.5:1', contrast.ok, contrast.detail);
 
-          // ── Check 5: CFI stable after resize ──
+          // ── Check 5: HUD center-tap & full-width bottom bar ──
+          const hudCheck = await checkHudAndBottomBar(page, vp);
+          report(vp.label, palette.name, 'HUD center-tap & bottom bar', hudCheck.ok, hudCheck.detail);
+
+          // ── Check 6: CFI stable after resize ──
           const cfi = await checkCfiAfterResize(page, vp);
           report(vp.label, palette.name, 'CFI stable after resize', cfi.ok, cfi.detail);
 

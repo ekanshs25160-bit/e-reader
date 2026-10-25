@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const createNextConfig = (phase) => ({
+  distDir: phase === 'phase-development-server' ? '.next' : '.next-build',
   reactStrictMode: false, // Recommended false when using epub.js to prevent double-render canvas issues
   images: {
     unoptimized: true,
@@ -8,7 +9,10 @@ const nextConfig = {
     serverComponentsExternalPackages: ['localforage'],
     proxyTimeout: 120000, // Allow 120s for Render Free-tier backend cold starts & AI streams
   },
-  webpack: (config) => {
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false;
+    }
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -41,6 +45,6 @@ const nextConfig = {
       ],
     };
   },
-};
+});
 
-export default nextConfig;
+export default createNextConfig;

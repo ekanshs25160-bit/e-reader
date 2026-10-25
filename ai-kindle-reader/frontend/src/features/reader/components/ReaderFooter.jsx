@@ -33,6 +33,7 @@ export default function ReaderFooter({
             top: 'max(8px, env(safe-area-inset-top, 8px))',
             backgroundColor: 'var(--reader-bg)',
             borderColor: 'var(--reader-border)',
+            color: 'var(--reader-fg)',
           }}
           className="fixed left-1/2 -translate-x-1/2 z-30 max-w-[68ch] w-[90vw] sm:w-[92vw] h-1 rounded-full p-[1px] backdrop-blur-sm border pointer-events-none transition-all duration-300 shadow-xs"
         >
@@ -52,7 +53,7 @@ export default function ReaderFooter({
           aria-label={`${minutesLeftInChapter} minutes left in ${chapterDisplayName}`}
           style={{ color: 'var(--reader-muted)' }}
           className={`fixed left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center justify-center space-y-1 text-center transition-all duration-300 w-[92vw] max-w-xs ${
-            isShortLandscape ? 'bottom-12' : 'bottom-18'
+            isShortLandscape ? 'bottom-12' : 'bottom-20'
           }`}
         >
           <div
@@ -107,7 +108,7 @@ export default function ReaderFooter({
           borderColor: 'var(--reader-border)',
           color: 'var(--reader-fg)',
         }}
-        className={`fixed bottom-0 left-0 z-40 flex justify-between items-center px-gutter ${
+        className={`fixed bottom-0 left-0 right-0 w-full z-40 flex justify-between items-center px-gutter ${
           isShortLandscape ? 'h-10' : 'h-16'
         } bg-opacity-90 backdrop-blur-md border-t shadow-sm transition-all duration-300 ease-in-out ${
           showHud

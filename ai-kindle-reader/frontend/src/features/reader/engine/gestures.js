@@ -168,11 +168,12 @@ export function setupReaderGestures({
     } catch {
       frameLeft = 0;
     }
-    const viewerRect = containerRef.current
-      ? containerRef.current.getBoundingClientRect()
+    const zoneEl = viewerRef.current || containerRef.current;
+    const zoneRect = zoneEl
+      ? zoneEl.getBoundingClientRect()
       : { left: 0, width: window.innerWidth };
     const screenX = frameLeft + clientX;
-    const xRatio = (screenX - viewerRect.left) / Math.max(1, viewerRect.width);
+    const xRatio = (screenX - zoneRect.left) / Math.max(1, zoneRect.width);
 
     if (xRatio < 0.3) {
       handlePrev();
@@ -191,11 +192,6 @@ export function setupReaderGestures({
     const sel = win.getSelection?.();
     if (sel && sel.toString().trim().length > 0) return;
 
-    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-      cbRef.current?.onToggleMenu?.();
-      return;
-    }
-
     let frameLeft = 0;
     try {
       const fe = win.frameElement;
@@ -203,11 +199,12 @@ export function setupReaderGestures({
     } catch {
       frameLeft = 0;
     }
-    const viewerRect = containerRef.current
-      ? containerRef.current.getBoundingClientRect()
+    const zoneEl = viewerRef.current || containerRef.current;
+    const zoneRect = zoneEl
+      ? zoneEl.getBoundingClientRect()
       : { left: 0, width: window.innerWidth };
     const screenX = frameLeft + e.clientX;
-    const xRatio = (screenX - viewerRect.left) / Math.max(1, viewerRect.width);
+    const xRatio = (screenX - zoneRect.left) / Math.max(1, zoneRect.width);
 
     if (xRatio < 0.3) {
       handlePrev();

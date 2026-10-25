@@ -2,19 +2,19 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-export function useHud({ activeOverlay, onActivity }) {
+export function useHud({ activeOverlay, setActiveOverlay, onActivity }) {
   const [showHud, setShowHud] = useState(false);
   const [cursorHidden, setCursorHidden] = useState(false);
   const [isMouseInWindow, setIsMouseInWindow] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const hudIdleTimerRef = useRef(null);
   const cursorIdleTimerRef = useRef(null);
   const activeOverlayRef = useRef(activeOverlay);
   activeOverlayRef.current = activeOverlay;
 
-  const registerPointerActivity = useCallback((e) => {
+  const registerPointerActivity = useCallback(() => {
     onActivity?.();
+    setIsMouseInWindow(true);
     setCursorHidden(false);
     clearTimeout(cursorIdleTimerRef.current);
 
@@ -23,38 +23,21 @@ export function useHud({ activeOverlay, onActivity }) {
         setCursorHidden(true);
       }
     }, 3000);
-
-    const clientY = e?.clientY ?? (typeof e?.touches !== 'undefined' ? e.touches[0]?.clientY : undefined);
-    const isTop80 = typeof clientY === 'number' && clientY <= 80;
-
-    setShowHud(true);
-    clearTimeout(hudIdleTimerRef.current);
-
-    if (!isTop80) {
-      hudIdleTimerRef.current = setTimeout(() => {
-        if (activeOverlayRef.current === 'none') {
-          setShowHud(false);
-        }
-      }, 2500);
-    }
   }, [onActivity]);
 
   const handleToggleHud = useCallback(() => {
     onActivity?.();
+    if (activeOverlayRef.current !== 'none') {
+      setActiveOverlay?.('none');
+      setShowHud(false);
+      return;
+    }
     setShowHud((prev) => !prev);
-  }, [onActivity]);
+  }, [onActivity, setActiveOverlay]);
 
   useEffect(() => {
     const handleMouseLeave = () => {
       setIsMouseInWindow(false);
-      if (activeOverlayRef.current === 'none') {
-        clearTimeout(hudIdleTimerRef.current);
-        hudIdleTimerRef.current = setTimeout(() => {
-          if (activeOverlayRef.current === 'none') {
-            setShowHud(false);
-          }
-        }, 1000);
-      }
     };
     const handleMouseEnter = () => {
       setIsMouseInWindow(true);
@@ -68,17 +51,9 @@ export function useHud({ activeOverlay, onActivity }) {
       window.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('mousemove', registerPointerActivity);
-      clearTimeout(hudIdleTimerRef.current);
       clearTimeout(cursorIdleTimerRef.current);
     };
   }, [registerPointerActivity]);
-
-  useEffect(() => {
-    if (activeOverlay !== 'none') {
-      setShowHud(true);
-      clearTimeout(hudIdleTimerRef.current);
-    }
-  }, [activeOverlay]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

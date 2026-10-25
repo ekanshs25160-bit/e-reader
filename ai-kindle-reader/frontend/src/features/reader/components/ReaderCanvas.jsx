@@ -1,13 +1,6 @@
 'use client';
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from 'react';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { getPageAreaDimensions, THEME_PALETTES, getChapterText } from '../engine';
 import { useViewportResize } from '../hooks/useViewportResize';
 import { useEpubRendition } from '../hooks/useEpubRendition';
@@ -175,9 +168,20 @@ const ReaderCanvas = forwardRef(function ReaderCanvas(
   const activeThemeId = settings?.palette || settings?.theme || theme;
   const activePalette = THEME_PALETTES[activeThemeId] || THEME_PALETTES.paper;
 
+  const handleContainerClick = useCallback((e) => {
+    if (e.target?.closest?.('a, button')) return;
+    if (typeof window !== 'undefined' && window.getSelection?.()?.toString().trim()) return;
+    const rect = containerRef.current?.getBoundingClientRect() || { left: 0, width: window.innerWidth };
+    const xRatio = (e.clientX - rect.left) / Math.max(1, rect.width);
+    if (xRatio < 0.3) handlePrev();
+    else if (xRatio > 0.7) handleNext();
+    else cbRef.current?.onToggleMenu?.();
+  }, [handlePrev, handleNext]);
+
   return (
     <div
       ref={containerRef}
+      onClick={handleContainerClick}
       className={`relative w-full h-full overflow-hidden flex justify-center transition-colors duration-300 select-none ${
         cursorHidden ? 'cursor-none' : 'cursor-default'
       }`}

@@ -23,6 +23,7 @@ Thumbs.db
 
 # Production & Build outputs
 .next/
+.next-build/
 out/
 build/
 dist/

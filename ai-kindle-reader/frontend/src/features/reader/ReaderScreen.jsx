@@ -79,7 +79,7 @@ export default function ReaderScreen() {
     handleToggleHud,
     handleToggleFullscreen,
     registerPointerActivity,
-  } = useHud({ activeOverlay, onActivity: session.registerActivity });
+  } = useHud({ activeOverlay, setActiveOverlay, onActivity: session.registerActivity });
 
   const {
     bookmarks,
@@ -146,7 +146,7 @@ export default function ReaderScreen() {
         backgroundColor: 'var(--reader-bg)',
         color: 'var(--reader-fg)',
       }}
-      className="relative w-full h-full overflow-hidden select-none"
+      className="relative w-full h-full h-dvh overflow-hidden select-none"
     >
       <ReaderToast message={toastMessage} />
 
@@ -206,7 +206,7 @@ export default function ReaderScreen() {
         isShortLandscape={isShortLandscape}
         onKeyDown={handleKeyDown}
         onIframeMouseMove={registerPointerActivity}
-        onUserInteraction={registerPointerActivity}
+        onUserInteraction={session.registerActivity}
         onToggleMenu={handleToggleHud}
         onNavigationLoaded={(loadedToc) => Array.isArray(loadedToc) && setToc(loadedToc)}
         onLocationChange={handleLocationChange}

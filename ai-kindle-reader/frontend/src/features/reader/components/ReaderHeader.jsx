@@ -25,10 +25,10 @@ export default function ReaderHeader({
         borderColor: 'var(--reader-border)',
         color: 'var(--reader-fg)',
       }}
-      className={`fixed top-0 left-0 w-full z-40 flex justify-between items-center px-4 sm:px-6 ${
+      className={`fixed top-0 left-0 right-0 w-full z-40 flex justify-between items-center px-4 sm:px-6 ${
         isShortLandscape ? 'h-9' : 'h-14'
       } bg-opacity-90 backdrop-blur-md border-b shadow-sm transition-all duration-300 ease-in-out ${
-        showHud || activeOverlay !== 'none'
+        showHud
           ? 'translate-y-0 opacity-100 pointer-events-auto'
           : '-translate-y-full opacity-0 pointer-events-none'
       }`}
