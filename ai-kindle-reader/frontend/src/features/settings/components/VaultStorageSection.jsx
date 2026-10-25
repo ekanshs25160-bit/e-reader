@@ -16,9 +16,9 @@ export function VaultStorageSection({
       </span>
       <div className="border border-hairline bg-surface rounded-[12px] divide-y divide-hairline">
         {/* Kept on this device */}
-        <div className="flex items-center justify-between p-4">
+        <div className="flex flex-col items-start gap-1 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between p-4">
           <span className="font-sans text-[14.5px] text-ink">Kept on this device</span>
-          <span className="text-[12px] text-muted font-sans tabular-nums text-right">
+          <span className="text-[12px] text-muted font-sans tabular-nums min-[480px]:text-right">
             {pluralize(storageSummary.booksCount, 'volume')} ·{' '}
             {pluralize(storageSummary.highlightsCount, 'highlight')} ·{' '}
             {pluralize(storageSummary.vocabularyCount, 'term')} · {storageSummary.storageFormatted}
@@ -26,9 +26,9 @@ export function VaultStorageSection({
         </div>
 
         {/* Last Saved */}
-        <div className="flex items-center justify-between p-4">
+        <div className="flex flex-col items-start gap-1 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between p-4">
           <span className="font-sans text-[14.5px] text-ink">Last saved</span>
-          <span className="text-[12px] text-muted font-sans">
+          <span className="text-[12px] text-muted font-sans min-[480px]:text-right">
             {storageSummary.lastSavedFormatted}
           </span>
         </div>

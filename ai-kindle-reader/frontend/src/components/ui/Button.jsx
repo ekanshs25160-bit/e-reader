@@ -64,6 +64,7 @@ export function Button({
     return (
       <button
         type={type}
+        data-singleline=""
         disabled={disabled}
         className={`${baseClasses} ${variantClasses} ${className}`}
         {...props}
@@ -76,6 +77,7 @@ export function Button({
   return (
     <button
       type={type}
+      data-singleline=""
       disabled={disabled}
       className={`${baseClasses} ${sizeClasses} ${variantClasses} ${className}`}
       {...props}

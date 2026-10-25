@@ -119,7 +119,7 @@ export function ProfileThemeSection({
                 setThemeMode(val);
                 showToast(`Theme set to ${val}`);
               }}
-              className="w-full"
+              fullWidth
             />
           </div>
         </div>

@@ -825,6 +825,173 @@ function evaluateHome1210() {
   return { pass: true, detail: 'Full title visible, one-line Resume button, one-line stat labels' };
 }
 
+/**
+ * 7. Mobile Layout Integrity Check (320, 360, 390, 430px)
+ * Verifies:
+ *   1. document.documentElement.scrollWidth <= innerWidth
+ *   2. No element's right edge is > 1px past the right edge of its nearest
+ *      bordered or overflow-clipping ancestor (excluding intentional horizontal scrollers).
+ *      Prints the element's text and overflow in px.
+ *   3. No chip or button label wraps to > 1 line when meant to be single-line (data-singleline attribute).
+ */
+function evaluateMobileLayout() {
+  const innerWidth = window.innerWidth;
+  const docScrollWidth = document.documentElement.scrollWidth;
+
+  // 1. Fail if document.documentElement.scrollWidth is greater than innerWidth
+  if (docScrollWidth > innerWidth) {
+    const culprits = [];
+    document.querySelectorAll('body *').forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.right > innerWidth + 1 || (el.scrollWidth > innerWidth + 1 && !el.closest('[data-overlay="sheet"]')?.contains(el))) {
+        culprits.push(`${el.tagName}.${(el.className || '').slice(0, 30)} (w=${Math.round(rect.width)}, r=${Math.round(rect.right)}, sw=${el.scrollWidth})`);
+      }
+    });
+    return {
+      pass: false,
+      detail: `document.documentElement.scrollWidth (${docScrollWidth}px) > innerWidth (${innerWidth}px) by ${docScrollWidth - innerWidth}px. Culprits: ${culprits.slice(0, 5).join('; ')}`,
+    };
+  }
+
+  // 2. Fail if any element's right edge is more than 1px past the right edge of
+  // its nearest bordered or overflow-clipping ancestor
+  const allElements = document.querySelectorAll('body *');
+  const overflowFailures = [];
+
+  for (const el of allElements) {
+    // Only check HTML elements
+    if (!(el instanceof HTMLElement)) continue;
+    if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'BR', 'WBR', 'IFRAME'].includes(el.tagName)) {
+      continue;
+    }
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) {
+      continue;
+    }
+    // Skip fixed/absolute positioned overlays or decorative items
+    if (style.position === 'fixed' || style.position === 'absolute') continue;
+    if (el.closest('[aria-hidden="true"], [data-hidden="true"]')) continue;
+    // epub.js internal pagination buffer is clipped by .epub-container (overflow: hidden)
+    if (el.closest('.epub-container')) continue;
+
+    // Elements inside an intentional horizontal scroll container are meant to scroll horizontally
+    // and are clipped by that container. The container itself is still checked against its parent.
+    const scrollContainer = el.closest('.overflow-x-auto, .overflow-x-scroll');
+    if (scrollContainer && scrollContainer !== el) {
+      continue;
+    }
+
+    // Find nearest bordered or overflow-clipping ancestor
+    let ancestor = el.parentElement;
+    let foundBoundary = null;
+
+    while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
+      const aStyle = window.getComputedStyle(ancestor);
+      const isClipping = ['hidden', 'clip'].includes(aStyle.overflowX) ||
+                         ['hidden', 'clip'].includes(aStyle.overflow);
+      const hasBorder = (parseFloat(aStyle.borderRightWidth) || 0) > 0.5 ||
+                        (parseFloat(aStyle.borderLeftWidth) || 0) > 0.5 ||
+                        (parseFloat(aStyle.borderTopWidth) || 0) > 0.5 ||
+                        (parseFloat(aStyle.borderBottomWidth) || 0) > 0.5;
+
+      if (isClipping || hasBorder) {
+        foundBoundary = ancestor;
+        break;
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    if (foundBoundary) {
+      const ancestorRect = foundBoundary.getBoundingClientRect();
+      const overflow = rect.right - ancestorRect.right;
+      // Allow 1.0px tolerance for subpixel layout rounding
+      if (overflow > 1.0) {
+        const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 32);
+        const tag = el.tagName.toLowerCase();
+        const aTag = foundBoundary.tagName.toLowerCase();
+        overflowFailures.push(
+          `<${tag}> "${text}" right edge (${rect.right.toFixed(1)}px) exceeds <${aTag}> (${ancestorRect.right.toFixed(1)}px) by ${overflow.toFixed(1)}px`
+        );
+        if (overflowFailures.length >= 5) break;
+      }
+    }
+  }
+
+  if (overflowFailures.length > 0) {
+    return {
+      pass: false,
+      detail: `Ancestor boundary overflow: ${overflowFailures.join(' | ')}`,
+    };
+  }
+
+  // 3. Fail if any chip or button label wraps to more than one line when meant to be single-line
+  // (data-singleline attribute on Chip and Button)
+  const singlelineElements = document.querySelectorAll('[data-singleline]');
+  const wrappingFailures = [];
+
+  for (const el of singlelineElements) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) {
+      continue;
+    }
+    if (el.closest('[aria-hidden="true"], [data-hidden="true"]')) continue;
+
+    // Check client rects of the text label
+    const labelSpan = el.querySelector('span:not(.material-symbols-outlined)') || el;
+    const textRects = labelSpan.getClientRects();
+
+    // Multiline wrapping causes > 1 client rect for inline elements
+    const isMultiLine = textRects.length > 1;
+    const isVerticallyOverflown = el.scrollHeight > el.clientHeight + 2;
+
+    if (isMultiLine || isVerticallyOverflown) {
+      const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 32);
+      wrappingFailures.push(
+        `<${el.tagName.toLowerCase()} data-singleline> "${text}" wrapped to ${textRects.length} line(s)`
+      );
+      if (wrappingFailures.length >= 5) break;
+    }
+  }
+
+  if (wrappingFailures.length > 0) {
+    return {
+      pass: false,
+      detail: `Single-line label wrapping: ${wrappingFailures.join(' | ')}`,
+    };
+  }
+
+  return { pass: true, detail: 'document width within innerWidth, no ancestor overflow, no multiline chips/buttons' };
+}
+
+/**
+ * Verifies that the Settings page margins are equal on the left and right (within 2px).
+ */
+function evaluateSettingsMargins() {
+  const container = document.querySelector('[data-page-container]');
+  if (!container) return { pass: false, detail: 'Settings PageContainer not found' };
+
+  const rect = container.getBoundingClientRect();
+  const leftGutter = rect.left;
+  const rightGutter = window.innerWidth - rect.right;
+  const gutterDiff = Math.abs(leftGutter - rightGutter);
+
+  if (gutterDiff > 2.0) {
+    return {
+      pass: false,
+      detail: `Settings page margins uneven: left=${leftGutter.toFixed(1)}px, right=${rightGutter.toFixed(1)}px (diff: ${gutterDiff.toFixed(1)}px)`,
+    };
+  }
+
+  return { pass: true, detail: `Margins equal: left=${leftGutter.toFixed(1)}px, right=${rightGutter.toFixed(1)}px` };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Contact Sheet Builder (HTML + PNG per palette)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1404,6 +1571,71 @@ async function main() {
   }
 
   await desktopPage.close();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Mobile Layout Integrity Check (320, 360, 390, 430px)
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n📱  Mobile Layout & Boundary Check (320, 360, 390, 430px)…');
+  console.log('─'.repeat(75));
+
+  const mobileTestViewports = [
+    { width: 320, height: 640, label: '320px' },
+    { width: 360, height: 800, label: '360px' },
+    { width: 390, height: 844, label: '390px' },
+    { width: 430, height: 932, label: '430px' },
+  ];
+
+  const mobilePage = await context.newPage();
+
+  for (const vp of mobileTestViewports) {
+    await mobilePage.setViewportSize({ width: vp.width, height: vp.height });
+
+    for (const route of ROUTES) {
+      totalChecks++;
+      const targetUrl = `${BASE_URL}${route.path}`;
+      try {
+        await mobilePage.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        if (route.slug === 'reader') {
+          await mobilePage.waitForFunction(
+            () => {
+              const iframe = document.querySelector('iframe');
+              return iframe && iframe.contentDocument?.body?.innerText?.trim().length > 0;
+            },
+            { timeout: 8000 }
+          ).catch(() => {});
+          await mobilePage.waitForTimeout(600);
+        } else {
+          await mobilePage.waitForLoadState('networkidle').catch(() => {});
+          await mobilePage.waitForTimeout(300);
+        }
+
+        const mobileRes = await mobilePage.evaluate(evaluateMobileLayout);
+        if (!mobileRes.pass) {
+          totalFailures++;
+          console.log(`  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] FAILED mobile layout: ${mobileRes.detail}`);
+        } else {
+          console.log(`  ✅  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Mobile OK: ${mobileRes.detail}`);
+        }
+
+        // Check Settings margins equal on left and right
+        if (route.slug === 'settings') {
+          totalChecks++;
+          const marginsRes = await mobilePage.evaluate(evaluateSettingsMargins);
+          if (!marginsRes.pass) {
+            totalFailures++;
+            console.log(`  ❌  Settings       [${vp.label.padEnd(7)}] FAILED margins check: ${marginsRes.detail}`);
+          } else {
+            console.log(`  ✅  Settings       [${vp.label.padEnd(7)}] Margins OK: ${marginsRes.detail}`);
+          }
+        }
+      } catch (err) {
+        totalFailures++;
+        console.log(`  ❌  ${route.name.padEnd(14)} [${vp.label.padEnd(7)}] Mobile check error: ${err.message}`);
+      }
+    }
+  }
+
+  await mobilePage.close();
 
   await page.close();
   await context.close();

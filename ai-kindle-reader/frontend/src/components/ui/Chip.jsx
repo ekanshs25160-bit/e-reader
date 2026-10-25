@@ -21,6 +21,7 @@ export function Chip({
   return (
     <button
       type="button"
+      data-singleline=""
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-[12.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-200 ease-out select-none min-h-[44px] sm:min-h-[36px] active:scale-[0.98] focus:outline-none disabled:opacity-40 disabled:pointer-events-none ${

@@ -49,15 +49,21 @@ export function BrowseSearchHeader({
 
       {/* Topic Chips */}
       {!isSearchMode && (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 py-1">
-          {TOPICS.map((topic) => (
-            <Chip
-              key={topic}
-              label={topic}
-              selected={selectedTopic === topic}
-              onClick={() => setSelectedTopic(topic)}
-            />
-          ))}
+        <div className="relative -mx-4 sm:-mx-8 md:mx-0">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar px-4 sm:px-8 md:px-0 py-1">
+            {TOPICS.map((topic) => (
+              <Chip
+                key={topic}
+                label={topic}
+                selected={selectedTopic === topic}
+                onClick={() => setSelectedTopic(topic)}
+              />
+            ))}
+          </div>
+          <div
+            className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent md:hidden"
+            aria-hidden="true"
+          />
         </div>
       )}
     </div>
