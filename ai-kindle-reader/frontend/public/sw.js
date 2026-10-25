@@ -82,9 +82,12 @@ if (typeof workbox !== 'undefined' && workbox) {
     })
   );
 
-  // 3. Next.js Static Assets & Chunks
+  // 3. Next.js Static Assets & Chunks (exclude webpack runtime / HMR updates)
   workbox.routing.registerRoute(
-    ({ url }) => url.pathname.startsWith('/_next/static/'),
+    ({ url }) =>
+      url.pathname.startsWith('/_next/static/') &&
+      !url.pathname.includes('webpack') &&
+      !url.pathname.includes('hot-update'),
     new workbox.strategies.StaleWhileRevalidate({
       cacheName: 'flyleaf-static-assets',
     })

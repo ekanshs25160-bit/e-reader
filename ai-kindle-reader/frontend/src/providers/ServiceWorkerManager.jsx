@@ -1,13 +1,23 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useTheme } from './ThemeProvider';
+import { useTheme } from './ThemeContext';
 
 export function ServiceWorkerManager() {
   const { showToast } = useTheme();
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    // In development mode, unregister active service workers to prevent stale Next.js chunks
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+      return;
+    }
 
     window.addEventListener('load', () => {
       navigator.serviceWorker

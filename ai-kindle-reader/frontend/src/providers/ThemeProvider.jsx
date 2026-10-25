@@ -1,31 +1,22 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useUserProfile } from './useUserProfile';
-import FirstRunDialog from '@/components/FirstRunDialog';
-import Uploader from '@/components/Uploader';
+import { ThemeContext } from './ThemeContext';
 import { settingsStore } from '@/utils/db';
 
-const ThemeContext = createContext({
-  themeMode: 'auto',
-  palette: 'paper',
-  resolvedPalette: 'paper',
-  setPalette: () => {},
-  setThemeMode: () => {},
-  cycleTheme: () => {},
-  toggleDayNight: () => {},
-  isNight: false,
-  userName: 'Reader',
-  setUserName: () => {},
-  userAvatar: null,
-  setUserAvatar: () => {},
-  resetPreferences: () => {},
-  openImportModal: () => {},
-  closeImportModal: () => {},
-  showToast: () => {},
-});
+export { useTheme, ThemeContext, THEME_CYCLE } from './ThemeContext';
 
-const THEME_CYCLE = ['auto', 'paper', 'sepia', 'night', 'oled'];
+const Uploader = dynamic(
+  () => import('@/features/library').then((mod) => mod.Uploader),
+  { ssr: false }
+);
+
+const FirstRunDialog = dynamic(
+  () => import('@/features/onboarding').then((mod) => mod.FirstRunDialog || mod.default),
+  { ssr: false }
+);
 
 export function ThemeProvider({ children }) {
   const [themeMode, setThemeModeState] = useState('paper');
@@ -215,8 +206,4 @@ export function ThemeProvider({ children }) {
       )}
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme() {
-  return useContext(ThemeContext);
 }
